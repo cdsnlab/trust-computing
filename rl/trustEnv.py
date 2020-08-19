@@ -42,7 +42,8 @@ class trustEnv(gym.Env):
         #* returns all available spaces
         colname = list(df.columns)
         print(colname)
-        #! requires min max of each category
+        #! requires min max of each category 
+        #! typically from 0 ~ 100 should be enough.
         mmax = list(df.max(axis=0))
         print(mmax)
         mmin = list(df.min(axis=0))
