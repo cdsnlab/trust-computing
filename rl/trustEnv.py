@@ -35,7 +35,7 @@ class trustEnv(gym.Env):
         print("reseting")
 
     def render(self, mode='human', close=False):
-        # Render the environment to the screen
+        # Render the environment to the screen. Don't think we need this though
         print("rendering")
         
     def get_space_matrix(self, df):
@@ -49,3 +49,4 @@ class trustEnv(gym.Env):
         mmin = list(df.min(axis=0))
         print(mmin)
         #self.observation_space = spaces.Dict({""})
+        
