@@ -6,6 +6,7 @@ from collections import defaultdict
 import random
 
 import matplotlib.pyplot as plt
+import queue
 
 #* for NN models
 # from keras.models import Sequential
@@ -26,7 +27,6 @@ class QLearningAgent:
         self.learning_rate = 0.01
         self.discount_factor = 0.9
         self.epsilon = 0.1
-        #self.trust_threshold = 70
         self.q_table = defaultdict(lambda:[0, 0, 0])
 
 
@@ -64,23 +64,38 @@ class QLearningAgent:
 if __name__ == "__main__":
     env = trustEnv()
     agent = QLearningAgent(actions=list(range(env.n_actions)))
-   
+    
+    DELAY = 20
+    evaluation_q = queue.Queue(DELAY)
     state = env.state
     while True:
         
-        print("[INFO] ", state)
-        # take action and proceed one step in the environment
-        action = agent.get_action(str(state))
-        
-        reward, next_state = env.step(action)
+        #env.get_accuracy()       
+        if not evaluation_q.full() :
+            car_id = env.next_car_index
+            car_trust_val = env.get_car()
+            if car_trust_val > state:
+                evaluation_q.put((car_id, 1))
+            else:
+                evaluation_q.put((car_id, 0))
 
-        # with sample <s,a,r,s'>, agent learns new q function
-        agent.learn(str(state), action, reward, str(next_state))
+        if evaluation_q.full():
+            car_id, perceived_btrust = evaluation_q.get()
+            # take action and proceed one step in the environment
+            action = agent.get_action(str(state))
+
+            reward, next_state = env.step2(action, car_id, perceived_btrust)
+
+            # with sample <s,a,r,s'>, agent learns new q function
+            agent.learn(str(state), action, reward, str(next_state))
+
+            state = next_state
+
 
         # if episode ends, then break
         if env.next_car_index == 99999:
+            env.drawgraph()
             break
-        state = next_state
         #print(agent.q_table)
 
 
