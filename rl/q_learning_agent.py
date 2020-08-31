@@ -4,32 +4,21 @@ import pandas as pd
 import os
 from collections import defaultdict
 import random
-
 import matplotlib.pyplot as plt
 import queue
+import argparse
 
-#* for NN models
-# from keras.models import Sequential
-# from keras.layers import Dense, Activation, Flatten
-# from keras.optimizers import Adam
 #* for RL 
 from trustEnv import trustEnv
-# import gym
-# from gym import spaces
-# from gym.utils import seeding
-# from rl.agents.dqn import DQNAgent
-# from rl.policy import EpsGreedyQPolicy
-# from rl.memory import SequentialMemory
+
     
-class QLearningAgent:
-    def __init__ (self, actions):
+class QLearningAgent():
+    def __init__ (self, actions, lr, df, eps):
         self.actions = actions
-        self.learning_rate = 0.01
-        self.discount_factor = 0.9
-        self.epsilon = 0.1
+        self.learning_rate = lr
+        self.discount_factor = df
+        self.epsilon = eps
         self.q_table = defaultdict(lambda:[0, 0, 0])
-
-
 
     def learn (self, state, action, reward, next_state):
         current_q = self.q_table[state][action]
@@ -60,17 +49,78 @@ class QLearningAgent:
                 max_index_list.append(index)
         return random.choice(max_index_list)
 
-
 if __name__ == "__main__":
-    env = trustEnv()
-    agent = QLearningAgent(actions=list(range(env.n_actions)))
+
+    argparser = argparse.ArgumentParser(
+        description="welcome")
+    argparser.add_argument(
+        '--lr',
+        metavar='lr',
+        type = float, 
+        default= 0.01,
+        help='learning rate'
+    )
+    argparser.add_argument(
+        '--df',
+        metavar='df',
+        type = float, 
+        default= 0.9,
+        help='discount factor'
+    )
+    argparser.add_argument(
+        '--eps',
+        metavar='eps',
+        type = float, 
+        default= 0.1,
+        help='epsilon'
+    )
+    argparser.add_argument(
+        '--fd',
+        metavar='fd',
+        type = int, 
+        default= 80,
+        help='feedback delay'
+    )
+    argparser.add_argument(
+        '--d',
+        metavar='d',
+        type = int, 
+        default= 1,
+        help='delta value'
+    )
+    argparser.add_argument(
+        '--r',
+        metavar='r',
+        type = int, 
+        default= 1,
+        help='reward'
+    )
+    argparser.add_argument(
+        '--s',
+        metavar='s',
+        type = int, 
+        default= 999,
+        help='steps'
+    )
+    argparser.add_argument(
+        '--thr',
+        metavar='thr',
+        type = int, 
+        default= 60,
+        help='initial threshold'
+    )
+    args = argparser.parse_args()
+
+
+    env = trustEnv(args.thr, args.d, args.r)
+    agent = QLearningAgent(list(range(env.n_actions)), args.lr, args.df, args.eps)
     
-    DELAY = 20
+    DELAY = args.fd
+    STEPS = args.s
     evaluation_q = queue.Queue(DELAY)
     state = env.state
     while True:
         
-        #env.get_accuracy()       
         if not evaluation_q.full() :
             car_id = env.next_car_index
             car_trust_val = env.get_car()
@@ -78,6 +128,7 @@ if __name__ == "__main__":
                 evaluation_q.put((car_id, 1))
             else:
                 evaluation_q.put((car_id, 0))
+        
 
         if evaluation_q.full():
             car_id, perceived_btrust = evaluation_q.get()
@@ -90,13 +141,14 @@ if __name__ == "__main__":
             agent.learn(str(state), action, reward, str(next_state))
 
             state = next_state
-
-
+        
         # if episode ends, then break
-        if env.next_car_index == 99999:
+        if env.next_car_index == STEPS:
             env.drawgraph()
             break
-        #print(agent.q_table)
+
+        env.gt_accuracy(env.next_car_index) #* writes down gt accuracy
+        env.next_car_index+=1
 
 
 

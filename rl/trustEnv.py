@@ -15,21 +15,24 @@ import matplotlib.pyplot as plt
 
 N_DISCRETE_ACTIONS = 2
 
-class trustEnv(gym.Env):
+class trustEnv:
     """ trust threshold getter
         the goal of this program is train our system to set dynamic trust threshold 
         
     """
-    def __init__(self):
+    def __init__(self, thrvalue, deltavalue, rewvalue):
         super(trustEnv, self).__init__()
         self.load_dataset('../sampledata/additional_features_with_predictions.csv') # load dataset
         #* creates 3 actions: increase t_threshold OR decrease t_threshold
         self.action_space = ["u", "d", "s"] #* 0, 1, 2
         self.n_actions = len(self.action_space)
-        self.cases = defaultdict(lambda:[1, 1, 1]) #* total number of cases, correct cases, wrong cases
-        self.state = 80.0
+        self.cases = defaultdict(lambda:[1, 0, 0]) #* total number of cases, correct cases, wrong cases
+        self.delta = deltavalue
+        self.state = thrvalue
+        self.reward_value = rewvalue
+        self.cur_decision ={}
         self.next_car_index = 1
-        self.result_values = defaultdict(lambda: [1, 1, 1, 1])
+        self.result_values = defaultdict(lambda: [0, 0, 0, 0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
 
     def load_dataset(self, filename):
         #* read dataset
@@ -41,15 +44,19 @@ class trustEnv(gym.Env):
     def get_car(self):
         #print(self.next_car_index)
         e_trust_val = int(self.data['I_trust_val'][self.next_car_index]*100)
-        self.result_values[self.next_car_index][0] = e_trust_val
-        self.result_values[self.next_car_index][1] = self.state # dynamic threshold 값.
-        self.result_values[self.next_car_index][2] = self.cases["p"][1]/self.cases["p"][0]
+
         self.cases['p'][0]+=1
         if e_trust_val > self.state:
+            self.cur_decision[self.next_car_index]=1
             self.cases["p"][1]+=1
         else:
+            self.cur_decision[self.next_car_index]=0
             self.cases["p"][2]+=1
-        self.next_car_index+=1
+        
+        self.result_values[self.next_car_index][0] = e_trust_val
+        self.result_values[self.next_car_index][1] = self.state # dynamic threshold 값.
+        self.result_values[self.next_car_index][2] = self.cases["p"][1]/self.cases["p"][0] #! 이건 accuracy가 아닌데? 그냥 (threshold 보다 높은 trust 값을 가진 차 개수) / (모든 차) 
+
         return e_trust_val
 
     def step(self, action):
@@ -100,7 +107,6 @@ class trustEnv(gym.Env):
         # print(self.cases['g'])
         # print("GT Accuracy: {}".format(self.cases["g"][1]/self.cases["g"][0]))
 
-        self.write_to_variable(self.next_car_index, e_trust_val)        
 
         if self.next_car_index == 99999:
             self.drawgraph()
@@ -110,66 +116,30 @@ class trustEnv(gym.Env):
         return reward, self.state
     
 
-    def step2(self, action, car_id, perceived_btrust):
+    def step2(self, action, car_id, perceived_btrust): 
         #* inputs an action to current state & gets a reward to this action
 
-        delta = 1
-        #! should we limit the min max of that threshold?
+        #self.delta = 1
+        #! should we limit the min max of that threshold? 
         if action == 0: #up
             if self.state < 100:
-                self.state+=delta
+                self.state+=self.delta
         elif action == 1: #down
             if self.state > 0:
-                self.state-=delta
+                self.state-=self.delta
         else:
             self.state-=0
         
-        feedback = int(self.data['actual_status'][car_id])
-        #print(car_id, self.next_car_index)
-        self.cases['g'][0]+=1
-        if perceived_btrust == feedback:
-            self.cases["g"][1]+=1
-            reward =1
+        if self.result_values[car_id][3] > self.result_values[car_id-1][3]: #* 이전보다 accuracy가 높아지면 +, 아니면 -
+            reward = self.reward_value
         else:
-            self.cases["g"][2]+=1
-            reward =-1
-        
-        
-        # #* check if trust value is higher or lower than tthreshold.
-        # if e_trust_val > self.state: 
-        #     self.cases["p"][1] +=1
-        #     result=1
-        # else:
-        #     self.cases["p"][2] +=1
-        #     result=0
-        
-        # print(self.cases['p'])
-        # print("Perceived Accuracy: {}".format(self.cases["p"][1]/self.cases["p"][0]))
-        # print(self.cases['g'])
-        # print("GT Accuracy: {}".format(self.cases["g"][1]/self.cases["g"][0]))
-
-        self.write_to_variable(self.next_car_index)        
-
-        # if self.next_car_index == 99999:
-        #     self.drawgraph()
-
-        #self.next_car_index+=1
+            reward = -(self.reward_value)
+        print("id {}, prev {}, cur {}, rew {}".format(car_id, self.result_values[car_id][3], self.result_values[car_id-1][3], reward))
 
         return reward, self.state
 
 
-    
-    def write_to_variable(self, nci):
-        
-        #self.result_values[nci][0] = self.state
-        self.result_values[nci][3] = self.cases["g"][1]/self.cases["g"][0]
-
-        #print("len:", len(self.result_values))
-        #for i in range (2):
-        #    print(self.result_values[nci][i])
-
-
-    def drawgraph(self): #! Y축1: accuracy, Y축2: dyanmic threshold 변화, 실제 trust값.
+    def drawgraph(self): 
         xvalues = range(0, len(self.result_values))
         ytrust = []
         ythr = []
@@ -182,17 +152,24 @@ class trustEnv(gym.Env):
             yacc.append(self.result_values[i][2]*100.0)
             yaccgt.append(self.result_values[i][3]*100.0)
         
-
         plt.plot(xvalues, ytrust, 'r', label="estimated trust value") # 
-        plt.plot(xvalues, ythr, 'b', label="dynamic threshold")
-        plt.plot(xvalues, yacc, 'g', label="perceived accuracy")
+        plt.plot(xvalues, ythr, 'b', label="DTT")
+        #plt.plot(xvalues, yacc, 'g', label="estimated accuracy")
         plt.plot(xvalues, yaccgt, 'y', label="actual accuracy")
         plt.legend()
         plt.grid()
         plt.show()
 
-    def get_accuracy(self):
-        print(self.result_values[len(self.result_values)-1][2])
+    def gt_accuracy(self, nci): #* gets gt accuracy regardless of time
+        self.cases["gt"][0]+=1
+        if self.cur_decision[nci]==self.data['actual_status'][nci]: 
+            self.cases["gt"][1]+=1
+        else:
+            self.cases["gt"][2]+=1
+
+        #! GT accuracy가 높아봐야 80이고 낮아봐야 20임. 왜냐하면 높은 경우 TT + FF / all cases인데 낮은 경우엔 FF / all cases임.
+        self.result_values[nci][3] = self.cases["gt"][1]/self.cases["gt"][0] #* TT + FF / all cases
+
 
 
     def reset(self):
