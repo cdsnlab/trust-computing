@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import os
+import json
 
 #* for RL 
 import gym
@@ -10,10 +11,6 @@ from gym.utils import seeding
 from collections import defaultdict
 #* draw now
 import matplotlib.pyplot as plt
-
-
-
-N_DISCRETE_ACTIONS = 2
 
 class trustEnv:
     """ trust threshold getter
@@ -26,7 +23,7 @@ class trustEnv:
         #* creates 3 actions: increase t_threshold OR decrease t_threshold
         self.action_space = ["u", "d", "s"] #* 0, 1, 2
         self.n_actions = len(self.action_space)
-        self.cases = defaultdict(lambda:[1, 0, 0]) #* total number of cases, correct cases, wrong cases
+        self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, TN, FN, FP
         self.delta = deltavalue
         self.state = thrvalue
         self.reward_value = rewvalue
@@ -42,20 +39,15 @@ class trustEnv:
         print("[INFO] File loaded")
     
     def get_car(self):
-        #print(self.next_car_index)
         e_trust_val = int(self.data['I_trust_val'][self.next_car_index]*100)
 
-        self.cases['p'][0]+=1
         if e_trust_val > self.state:
             self.cur_decision[self.next_car_index]=1
-            self.cases["p"][1]+=1
         else:
             self.cur_decision[self.next_car_index]=0
-            self.cases["p"][2]+=1
         
         self.result_values[self.next_car_index][0] = e_trust_val
         self.result_values[self.next_car_index][1] = self.state # dynamic threshold 값.
-        self.result_values[self.next_car_index][2] = self.cases["p"][1]/self.cases["p"][0] #! 이건 accuracy가 아닌데? 그냥 (threshold 보다 높은 trust 값을 가진 차 개수) / (모든 차) 
 
         return e_trust_val
 
@@ -118,8 +110,6 @@ class trustEnv:
 
     def step2(self, action, car_id, perceived_btrust): 
         #* inputs an action to current state & gets a reward to this action
-
-        #self.delta = 1
         #! should we limit the min max of that threshold? 
         if action == 0: #up
             if self.state < 100:
@@ -130,11 +120,22 @@ class trustEnv:
         else:
             self.state-=0
         
-        if self.result_values[car_id][3] > self.result_values[car_id-1][3]: #* 이전보다 accuracy가 높아지면 +, 아니면 -
+        ###* Reward주는 방법 1) TP, TN, FN, FP 구별해서 주기
+        if self.cur_decision[car_id] == 1 and self.data['actual_status'][car_id] == 1: 
             reward = self.reward_value
-        else:
+        elif self.cur_decision[car_id]==1 and self.data['actual_status'][car_id] == 0:
             reward = -(self.reward_value)
-        print("id {}, prev {}, cur {}, rew {}".format(car_id, self.result_values[car_id][3], self.result_values[car_id-1][3], reward))
+        elif self.cur_decision[car_id]==0 and self.data['actual_status'][car_id] == 1:
+            reward = -(self.reward_value)
+        else:
+            reward = self.reward_value
+
+        ###* Reward주는 방법 2) 이전보다 accuracy가 늘어나면 주기
+        # if self.result_values[car_id][3] > self.result_values[car_id-1][3]: #* 이전보다 accuracy가 높아지면 +, 아니면 -
+        #     reward = self.reward_value
+        # else:
+        #     reward = -(self.reward_value)
+        # print("id {}, prev {}, cur {}, rew {}".format(car_id, self.result_values[car_id-1][3], self.result_values[car_id][3], reward))
 
         return reward, self.state
 
@@ -149,7 +150,7 @@ class trustEnv:
         for i in range (len(self.result_values)):
             ytrust.append(self.result_values[i][0])
             ythr.append(self.result_values[i][1])
-            yacc.append(self.result_values[i][2]*100.0)
+            # yacc.append(self.result_values[i][2]*100.0)
             yaccgt.append(self.result_values[i][3]*100.0)
         
         plt.plot(xvalues, ytrust, 'r', label="estimated trust value") # 
@@ -159,36 +160,59 @@ class trustEnv:
         plt.legend()
         plt.grid()
         plt.show()
+        plt.savefig(name)
 
     def gt_accuracy(self, nci): #* gets gt accuracy regardless of time
-        self.cases["gt"][0]+=1
-        if self.cur_decision[nci]==self.data['actual_status'][nci]: 
+        if self.cur_decision[nci] == 1 and self.data['actual_status'][nci] == 1: 
+            self.cases["gt"][0]+=1
+        elif self.cur_decision[nci]==1 and self.data['actual_status'][nci] == 0:
             self.cases["gt"][1]+=1
-        else:
+        elif self.cur_decision[nci]==0 and self.data['actual_status'][nci] == 1:
             self.cases["gt"][2]+=1
+        else:
+            self.cases["gt"][3]+=1
 
-        #! GT accuracy가 높아봐야 80이고 낮아봐야 20임. 왜냐하면 높은 경우 TT + FF / all cases인데 낮은 경우엔 FF / all cases임.
-        self.result_values[nci][3] = self.cases["gt"][1]/self.cases["gt"][0] #* TT + FF / all cases
+        #* Threshold 가 낮으면 그냥 trust하겠다는 의민데, 그렇게하면 
+        self.result_values[nci][3] = (self.cases["gt"][0] + self.cases["gt"][3])/(self.cases["gt"][0] + self.cases["gt"][1] + self.cases["gt"][2] + self.cases["gt"][3]) #* TT + FF / all cases
 
+    def savetojson(self, name, filename):
+        xvalues = range(0, len(self.result_values))
+        ytrust, ythr, yacc, yaccgt = [], [], [], []
+        for i in range (len(self.result_values)):
+            ytrust.append(self.result_values[i][0])
+            ythr.append(self.result_values[i][1])
+            # yacc.append(self.result_values[i][2]*100.0)
+            yaccgt.append(self.result_values[i][3]*100.0)
+        #print(yaccgt)
+        if os.path.exists(filename): # if it exists
+            if os.stat(filename).st_size!=0: # if it is not empty
+                with open(filename) as json_file:
+                    json_decoded = json.load(json_file)
+                    #print(json_decoded)
 
+                json_decoded[str(name)] = yaccgt
+                with open(filename, 'w') as json_file:
+                    json.dump(json_decoded, json_file)
+            else: # if content is empty
+                json_decoded = {}
+                json_decoded[str(name)] = yaccgt
+                with open(filename, 'w') as json_file:
+                    json.dump(json_decoded, json_file)
+        else:
+            os.mknod(filename)
+            json_decoded = {}
+            json_decoded[str(name)] = yaccgt
+            with open(filename, 'w') as json_file:
+                json.dump(json_decoded, json_file)
+        
+        self.reset()
 
     def reset(self):
-        #* theres no need for our program to reset.. i think
-        print("reseting")
+        
+        print("[INFO] reseting...")
+        self.result_values = defaultdict(lambda: [0, 0, 0, 0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
 
     def render(self, mode='human', close=False):
         # Render the environment to the screen. Don't think we need this though
         print("rendering")
-        
-    # def get_space_matrix(self, df):
-    #     #* returns all available spaces
-    #     colname = list(df.columns)
-    #     print(colname)
-    #     #! requires min max of each category 
-    #     #! typically from 0 ~ 100 should be enough.
-    #     mmax = list(df.max(axis=0))
-    #     print(mmax)
-    #     mmin = list(df.min(axis=0))
-    #     print(mmin)
-    #     #self.observation_space = spaces.Dict({""})
         

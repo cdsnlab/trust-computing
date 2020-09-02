@@ -6,14 +6,22 @@ from collections import defaultdict
 import random
 import matplotlib.pyplot as plt
 import queue
-import argparse
+from itertools import product, starmap
+from collections import namedtuple
+from tqdm import tqdm
 
 #* for RL 
 from trustEnv import trustEnv
 
+
+def named_product(**items):
+    Product = namedtuple('Product', items.keys())
+    return starmap(Product, product(*items.values()))
+
+
     
 class QLearningAgent():
-    def __init__ (self, actions, lr, df, eps):
+    def __init__ (self, actions, lr, df, eps):    
         self.actions = actions
         self.learning_rate = lr
         self.discount_factor = df
@@ -51,111 +59,53 @@ class QLearningAgent():
 
 if __name__ == "__main__":
 
-    argparser = argparse.ArgumentParser(
-        description="welcome")
-    argparser.add_argument(
-        '--lr',
-        metavar='lr',
-        type = float, 
-        default= 0.01,
-        help='learning rate'
-    )
-    argparser.add_argument(
-        '--df',
-        metavar='df',
-        type = float, 
-        default= 0.9,
-        help='discount factor'
-    )
-    argparser.add_argument(
-        '--eps',
-        metavar='eps',
-        type = float, 
-        default= 0.1,
-        help='epsilon'
-    )
-    argparser.add_argument(
-        '--fd',
-        metavar='fd',
-        type = int, 
-        default= 80,
-        help='feedback delay'
-    )
-    argparser.add_argument(
-        '--d',
-        metavar='d',
-        type = int, 
-        default= 1,
-        help='delta value'
-    )
-    argparser.add_argument(
-        '--r',
-        metavar='r',
-        type = int, 
-        default= 1,
-        help='reward'
-    )
-    argparser.add_argument(
-        '--s',
-        metavar='s',
-        type = int, 
-        default= 999,
-        help='steps'
-    )
-    argparser.add_argument(
-        '--thr',
-        metavar='thr',
-        type = int, 
-        default= 60,
-        help='initial threshold'
-    )
-    args = argparser.parse_args()
-
-
-    env = trustEnv(args.thr, args.d, args.r)
-    agent = QLearningAgent(list(range(env.n_actions)), args.lr, args.df, args.eps)
+    #* lets leave this one till later.
+    v_number_of_actions = [2, 4, 6] #* up down, upx2 downx2, upx4 downx4
     
-    DELAY = args.fd
-    STEPS = args.s
-    evaluation_q = queue.Queue(DELAY)
-    state = env.state
-    while True:
+    filename = "result/iteration.json"
+    for output in tqdm(named_product(v_d=[1,3,5], v_lr=[0.01,0.1,0.5, 0.9], v_df=[0.1, 0.5, 0.9], v_eps=[0.1, 0.5, 0.9], v_fd=[100, 200, 500], v_s=[1000, 10000, 50000], v_i=[10, 50, 90])):
+        #! 이렇게 돌리니깐 JSON파일을 읽고, 내용 추가하고, 저장하고를 반복하다보니깐 너무 시간이 오래걸림.
+
+        env = trustEnv(output.v_i, output.v_d, 1)
+        agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
         
-        if not evaluation_q.full() :
-            car_id = env.next_car_index
-            car_trust_val = env.get_car()
-            if car_trust_val > state:
-                evaluation_q.put((car_id, 1))
-            else:
-                evaluation_q.put((car_id, 0))
-        
+        DELAY = output.v_fd
+        STEPS = output.v_s
+        evaluation_q = queue.Queue(DELAY)
+        env.state = output.v_i
+        state = env.state
+    
+        while True:
+            
+            #if not evaluation_q.full():
+            if env.next_car_index <= STEPS:
+                car_id = env.next_car_index
+                car_trust_val = env.get_car()
+                if car_trust_val > state:
+                    evaluation_q.put((car_id, 1))
+                else:
+                    evaluation_q.put((car_id, 0))
+            
+            if env.next_car_index >= DELAY :
+                car_id, perceived_btrust = evaluation_q.get()
+                # take action and proceed one step in the environment
+                env.gt_accuracy(car_id) 
 
-        if evaluation_q.full():
-            car_id, perceived_btrust = evaluation_q.get()
-            # take action and proceed one step in the environment
-            action = agent.get_action(str(state))
+                action = agent.get_action(str(state))
 
-            reward, next_state = env.step2(action, car_id, perceived_btrust)
+                reward, next_state = env.step2(action, car_id, perceived_btrust)
 
-            # with sample <s,a,r,s'>, agent learns new q function
-            agent.learn(str(state), action, reward, str(next_state))
+                # with sample <s,a,r,s'>, agent learns new q function
+                agent.learn(str(state), action, reward, str(next_state))
 
-            state = next_state
-        
-        # if episode ends, then break
-        if env.next_car_index == STEPS:
-            env.drawgraph()
-            break
+                state = next_state
+            
+            #print(env.next_car_index)
+            # if episode ends, then break
+            if env.next_car_index == (STEPS+DELAY)-1:
+                #env.drawgraph()
+                env.savetojson(output, filename) #! save this results to the file. READ_JSON APPEND SAVE REPEAT
+                break
 
-        env.gt_accuracy(env.next_car_index) #* writes down gt accuracy
-        env.next_car_index+=1
-
-
-
-#policy = EpsGreedyQPolicy()
-#memory = SequentialMemory(limit=50000, window_length=1)
-
-#dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=10, target_model_update=1e-2, policy=policy)
-#dqn.compile(Adam(lr=1e-3), metrics=['mae'])
-
-#dqn.fit(env, nb_steps=5000, visualize=False, verbose=2)
+            env.next_car_index+=1
+        print("finished: {}".format(output))
