@@ -64,7 +64,7 @@ if __name__ == "__main__":
     
     filename = "result/iteration.json"
     for output in tqdm(named_product(v_d=[1,3,5], v_lr=[0.01,0.1,0.5, 0.9], v_df=[0.1, 0.5, 0.9], v_eps=[0.1, 0.5, 0.9], v_fd=[100, 200, 500], v_s=[1000, 10000, 50000], v_i=[10, 50, 90])):
-        #! 이렇게 돌리니깐 JSON파일을 읽고, 내용 추가하고, 저장하고를 반복하다보니깐 너무 시간이 오래걸림.
+    #for output in tqdm(named_product(v_d=[1, 3], v_lr=[0.01], v_df=[0.1], v_eps=[0.1], v_fd=[100], v_s=[1000], v_i=[90])):
 
         env = trustEnv(output.v_i, output.v_d, 1)
         agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
@@ -104,7 +104,8 @@ if __name__ == "__main__":
             # if episode ends, then break
             if env.next_car_index == (STEPS+DELAY)-1:
                 #env.drawgraph()
-                env.savetojson(output, filename) #! save this results to the file. READ_JSON APPEND SAVE REPEAT
+                #env.savetojson(output, filename) #! save this results to the file. READ_JSON APPEND SAVE REPEAT
+                env.savetomongo(output)
                 break
 
             env.next_car_index+=1

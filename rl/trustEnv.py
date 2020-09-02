@@ -11,6 +11,14 @@ from gym.utils import seeding
 from collections import defaultdict
 #* draw now
 import matplotlib.pyplot as plt
+from pymongo import MongoClient
+
+# def load_dataset(filename):
+#         #* read dataset
+print("[INFO] Reading file...")
+#data = pd.read_csv('../sampledata/data_6_.txt', sep='\t', header=0)
+data = pd.read_csv('../sampledata/additional_features_with_predictions.csv', header=0)
+print("[INFO] File loaded")
 
 class trustEnv:
     """ trust threshold getter
@@ -19,7 +27,8 @@ class trustEnv:
     """
     def __init__(self, thrvalue, deltavalue, rewvalue):
         super(trustEnv, self).__init__()
-        self.load_dataset('../sampledata/additional_features_with_predictions.csv') # load dataset
+        #load_dataset('../sampledata/additional_features_with_predictions.csv') # load dataset
+        self.connect()
         #* creates 3 actions: increase t_threshold OR decrease t_threshold
         self.action_space = ["u", "d", "s"] #* 0, 1, 2
         self.n_actions = len(self.action_space)
@@ -31,15 +40,18 @@ class trustEnv:
         self.next_car_index = 1
         self.result_values = defaultdict(lambda: [0, 0, 0, 0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
 
-    def load_dataset(self, filename):
-        #* read dataset
-        print("[INFO] Reading file...")
-        #data = pd.read_csv('../sampledata/data_6_.txt', sep='\t', header=0)
-        self.data = pd.read_csv(filename, header=0)
-        print("[INFO] File loaded")
+        self.client = None
+
+    def connect(self):
+        self.client = MongoClient('localhost', 27017)
+        self.db = self.client['trustdb']
+        self.coll = self.db['q_learning']
+
+
+    
     
     def get_car(self):
-        e_trust_val = int(self.data['I_trust_val'][self.next_car_index]*100)
+        e_trust_val = int(data['I_trust_val'][self.next_car_index]*100)
 
         if e_trust_val > self.state:
             self.cur_decision[self.next_car_index]=1
@@ -58,7 +70,7 @@ class trustEnv:
         DELAY = 10
         delta = 5
 
-        e_trust_val = int(self.data['I_trust_val'][self.next_car_index]*100)
+        e_trust_val = int(data['I_trust_val'][self.next_car_index]*100)
         self.cases["p"][0] +=1
         #* adjust tthreshold
         if action == 0: #up
@@ -83,7 +95,7 @@ class trustEnv:
         #print(self.next_car_index, DELAY)
         if self.next_car_index > DELAY:
             self.cases['g'][0]+=1
-            feedback = int(self.data['actual_status'][self.next_car_index-DELAY])
+            feedback = int(data['actual_status'][self.next_car_index-DELAY])
             if result == feedback:
                 reward = 1
                 self.cases["g"][1]+=1
@@ -121,11 +133,11 @@ class trustEnv:
             self.state-=0
         
         ###* Reward주는 방법 1) TP, TN, FN, FP 구별해서 주기
-        if self.cur_decision[car_id] == 1 and self.data['actual_status'][car_id] == 1: 
+        if self.cur_decision[car_id] == 1 and data['actual_status'][car_id] == 1: 
             reward = self.reward_value
-        elif self.cur_decision[car_id]==1 and self.data['actual_status'][car_id] == 0:
+        elif self.cur_decision[car_id]==1 and data['actual_status'][car_id] == 0:
             reward = -(self.reward_value)
-        elif self.cur_decision[car_id]==0 and self.data['actual_status'][car_id] == 1:
+        elif self.cur_decision[car_id]==0 and data['actual_status'][car_id] == 1:
             reward = -(self.reward_value)
         else:
             reward = self.reward_value
@@ -163,11 +175,11 @@ class trustEnv:
         plt.savefig(name)
 
     def gt_accuracy(self, nci): #* gets gt accuracy regardless of time
-        if self.cur_decision[nci] == 1 and self.data['actual_status'][nci] == 1: 
+        if self.cur_decision[nci] == 1 and data['actual_status'][nci] == 1: 
             self.cases["gt"][0]+=1
-        elif self.cur_decision[nci]==1 and self.data['actual_status'][nci] == 0:
+        elif self.cur_decision[nci]==1 and data['actual_status'][nci] == 0:
             self.cases["gt"][1]+=1
-        elif self.cur_decision[nci]==0 and self.data['actual_status'][nci] == 1:
+        elif self.cur_decision[nci]==0 and data['actual_status'][nci] == 1:
             self.cases["gt"][2]+=1
         else:
             self.cases["gt"][3]+=1
@@ -175,8 +187,19 @@ class trustEnv:
         #* Threshold 가 낮으면 그냥 trust하겠다는 의민데, 그렇게하면 
         self.result_values[nci][3] = (self.cases["gt"][0] + self.cases["gt"][3])/(self.cases["gt"][0] + self.cases["gt"][1] + self.cases["gt"][2] + self.cases["gt"][3]) #* TT + FF / all cases
 
+
+    def savetomongo(self,name):
+        ytrust, ythr, yacc, yaccgt = [], [], [], []
+        for i in range (len(self.result_values)):
+            ytrust.append(self.result_values[i][0])
+            ythr.append(self.result_values[i][1])
+            # yacc.append(self.result_values[i][2]*100.0)
+            yaccgt.append(self.result_values[i][3]*100.0)
+        row = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yvalue": yaccgt}
+        #print(row)
+        self.coll.insert_one(row)
+
     def savetojson(self, name, filename):
-        xvalues = range(0, len(self.result_values))
         ytrust, ythr, yacc, yaccgt = [], [], [], []
         for i in range (len(self.result_values)):
             ytrust.append(self.result_values[i][0])
