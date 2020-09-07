@@ -100,6 +100,7 @@ typedef struct probability
 
 void generate_probability();
 double plus_minus_five_random();
+double plus_minus_ten_random();
 
 void estimate_trust_value(ID_data **ID_data_base, int num_ID);
 void id_generation(ID_data **ID_data_base, int num_ID);
@@ -147,12 +148,11 @@ int main()
 			for(k = 6; k < 7; k++) {
 				generate_probability();
 				char buf[12];
-				snprintf(buf, 12, "data_%d_.txt", k);
+				snprintf(buf, 12, "fo00_%d_.txt", k);
 				// open file
 				fp = fopen(buf, "a");
-				fprintf(fp, "bad\tgood\trush_hour\tvisibility\tweather\tIS_Good\tIS_Bad\tI_trust_val\tdecision_thresh\tbad_weather\tgood_weather\tbad_visibility\tgood_visibility\trush_hour\tnot_rush_hour\tmale\tfemale\tageunder35\tageover45\twith_passenger\twithout_passenger\tI_decision\tactual_status\n");
-				simulation_function(500, 300, 500, 50000, weight[i], threshold[5], prob_forge[j], mal_vehicle_portion[2], fp);
-				fclose(fp);
+				fprintf(fp, "bad\tgood\trush_hour\tvisibility\tweather\tgender\tage\tpassengers\tIS_Good\tIS_Bad\tI_trust_val\tdecision_thresh\tbad_weather\tgood_weather\tbad_visibility\tgood_visibility\trush_hour\tnot_rush_hour\tmale\tfemale\tageunder35\tageover45\twith_passenger\twithout_passenger\tI_decision\tactual_status\n");
+				simulation_function(500, 300, 500, 50000, weight[i], threshold[5], prob_forge[1], mal_vehicle_portion[2], fp);
 			}
 		}
 	}
@@ -180,23 +180,32 @@ void generate_probability()
 	// probability_base->rush_hour[RUSH_HOUR] = 0.935065 + plus_minus_five_random() / (double)100000;
 	// probability_base->rush_hour[NOT_RUSH_HOUR] = 0.804878 + plus_minus_five_random() / (double)100000;
 
-	probability_base->weather[BAD_WEATHER] = 0.797297;
-	probability_base->weather[GOOD_WEATHER] = 0.923077;
+	// probability_base->gender[MALE] = 0.654595 + plus_minus_five_random() / (double)100000;
+	// probability_base->gender[FEMALE] = 0.830681 + plus_minus_five_random() / (double)100000;
 
-	probability_base->visibility[BAD_VISIBILITY] = 0.943205;
-	probability_base->visibility[GOOD_VISIBILITY] = 0.867850 ;
+	// probability_base->age[AGE_UNDER_35] = 0.658410 + plus_minus_five_random() / (double)100000;
+	// probability_base->age[AGE_OVER_45] = 0.821074 + plus_minus_five_random() / (double)100000;
 
-	probability_base->rush_hour[RUSH_HOUR] = 0.935065;
-	probability_base->rush_hour[NOT_RUSH_HOUR] = 0.804878;
+	// probability_base->passengers[WITH_PASSENGERS] = 0.738851 + plus_minus_five_random() / (double)100000;
+	// probability_base->passengers[WITHOUT_PASSENGERS] = 0.668868 + plus_minus_five_random() / (double)100000;
 
-	probability_base->gender[MALE] = 0.654595;
-	probability_base->gender[FEMALE] = 0.830681;
+	probability_base->weather[BAD_WEATHER] = 0.797297 + plus_minus_ten_random() / (double)100000;
+	probability_base->weather[GOOD_WEATHER] = 0.923077 + plus_minus_ten_random() / (double)100000;
 
-	probability_base->age[AGE_UNDER_35] = 0.658410;
-	probability_base->age[AGE_OVER_45] = 0.821074;
+	probability_base->visibility[BAD_VISIBILITY] = 0.943205 + plus_minus_ten_random() / (double)100000;
+	probability_base->visibility[GOOD_VISIBILITY] = 0.867850 + plus_minus_ten_random() / (double)100000;
 
-	probability_base->passengers[WITH_PASSENGERS] = 0.738851;
-	probability_base->passengers[WITHOUT_PASSENGERS] = 0.668868;
+	probability_base->rush_hour[RUSH_HOUR] = 0.935065 + plus_minus_ten_random() / (double)100000;
+	probability_base->rush_hour[NOT_RUSH_HOUR] = 0.804878 + plus_minus_ten_random() / (double)100000;
+
+	probability_base->gender[MALE] = 0.654595 + plus_minus_ten_random() / (double)100000;
+	probability_base->gender[FEMALE] = 0.830681 + plus_minus_ten_random() / (double)100000;
+
+	probability_base->age[AGE_UNDER_35] = 0.658410 + plus_minus_ten_random() / (double)100000;
+	probability_base->age[AGE_OVER_45] = 0.821074 + plus_minus_ten_random() / (double)100000;
+
+	probability_base->passengers[WITH_PASSENGERS] = 0.738851 + plus_minus_ten_random() / (double)100000;
+	probability_base->passengers[WITHOUT_PASSENGERS] = 0.668868 + plus_minus_ten_random() / (double)100000;
 
 	//probability_base->weather[BAD_WEATHER] = 0.797297;
 	//probability_base->weather[GOOD_WEATHER] = 0.923077;
@@ -208,14 +217,22 @@ void generate_probability()
 	//probability_base->rush_hour[NOT_RUSH_HOUR] = 0.804878;
 }
 
-// double plus_minus_five_random()
-// {
+double plus_minus_five_random()
+{
 	
-// 	int num = rand() % 10001 - 5000; 
-// 	printf("rand var : %d ", num); 
-// 	return num;
+	int num = rand() % 10001 - 5000; 
+	printf("rand var : %d ", num); 
+	return num;
         
-// }
+}
+
+double plus_minus_ten_random()
+{
+	int num = rand() % 20001 - 10000; 
+	printf("rand var : %d ", num); 
+	return num;
+       
+}
 
 void estimate_trust_value(ID_data **ID_data_base, int num_ID)
 {
@@ -521,10 +538,46 @@ double behavior_probability(int weather, int visibility, int rush_hour, int gend
 
 		//malicious_probability = (0.340 * context_probability[0]) + (0.318 * context_probability[1]) + (0.342 * context_probability[2]) - target_ID->bias_personal;
 
+		// malicious_probability = 
+        // (double)1 - ((probability_base->weather[weather] + probability_base->visibility[visibility] + probability_base->rush_hour[rush_hour] + probability_base->gender[gender] + probability_base->age[age] + probability_base->passengers[passenger]) / 6)
+        // + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000);
+
+		//inverted base method
+		// malicious_probability = 
+        // (double)1 - (probability_base->weather[weather] * probability_base->visibility[visibility] * probability_base->rush_hour[rush_hour])
+        // + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000);
+
+		//uninverted base method
+		// malicious_probability = 
+        // (probability_base->weather[weather] * probability_base->visibility[visibility] * probability_base->rush_hour[rush_hour])
+        // + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000);
+
+		//inverted average
+		// malicious_probability = 
+        // (double)1 - ((probability_base->weather[weather] + probability_base->visibility[visibility] + probability_base->rush_hour[rush_hour]) / (double)3
+        // + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000));
+		
+		// inverted average with added
+		// malicious_probability = 
+        // 1 - ((probability_base->weather[weather] + probability_base->visibility[visibility] + probability_base->rush_hour[rush_hour]
+		// + probability_base->gender[gender] + probability_base->age[age] + probability_base->passengers[passenger]) / (double)6
+        // + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000));
+
+		//uninverted average with added
+		// malicious_probability = 
+        // ((probability_base->weather[weather] + probability_base->visibility[visibility] + probability_base->rush_hour[rush_hour]
+		// + probability_base->gender[gender] + probability_base->age[age] + probability_base->passengers[passenger]) / (double)6
+        // + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000));
+
+		//inverted mult with added features
 		malicious_probability = 
-        probability_base->weather[weather] * probability_base->visibility[visibility] * probability_base->rush_hour[rush_hour] * probability_base->gender[gender] * probability_base->age[age] * probability_base->passengers[passenger]
-        + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000);
+        (double)1 - (probability_base->weather[weather] * probability_base->visibility[visibility] * probability_base->rush_hour[rush_hour]
+		* probability_base->gender[gender] * probability_base->age[age] * probability_base->passengers[passenger]
+        + target_ID->bias_context[weather][visibility][rush_hour][gender][age][passenger] - ((rand() % (PERSONAL_RANGE + 1)) / (double)1000));
+
 	}
+
+
 
 	return malicious_probability;
 }
@@ -1170,7 +1223,7 @@ void trust_simulation(int num_ID, int num_controller_ID_data, int num_neighbor_I
 			if (list_I_sharing_trust_value[j] < 0)
 			{
 				I_sharing_tv = I_sharing_direct;
-				printf("ERROR: NO I-shiaring DATA\n");
+				printf("ERROR: NO I-sharing DATA\n");
 			}
 			else
 			{
@@ -1180,7 +1233,7 @@ void trust_simulation(int num_ID, int num_controller_ID_data, int num_neighbor_I
 			if (list_objective_trust_value[j] < 0)
 			{
 				objective_tv = objective_direct;
-				printf("ERROR: NO I-shiaring DATA\n");
+				printf("ERROR: NO I-sharing DATA\n");
 			}
 			else
 			{
@@ -1199,25 +1252,26 @@ void trust_simulation(int num_ID, int num_controller_ID_data, int num_neighbor_I
 			{
 				if (list_behavior_results[j] == BENIGN_STATUS)
 				{
-					if (I_sharing_decision == 0) D_I_TN++;
+					if (I_sharing_decision == MALICIOUS_STATUS) D_I_TN++;
 					else D_I_FP++;
 
-					if (objective_decision == 0) D_OB_TN++;
+					if (objective_decision == MALICIOUS_STATUS) D_OB_TN++;
 					else D_OB_FP++;
 
-					I_sharing_num_bad[j]++;
-					objective_num_bad[j]++;
+					
+					I_sharing_num_good[j]++;
+					objective_num_good[j]++;
 				}
 				else
 				{
-					if (I_sharing_decision == 0) D_I_FN++;
+					if (I_sharing_decision == MALICIOUS_STATUS) D_I_FN++;
 					else D_I_TP++;
 
-					if (objective_decision == 0) D_OB_FN++;
+					if (objective_decision == MALICIOUS_STATUS) D_OB_FN++;
 					else D_OB_TP++;
 
-					I_sharing_num_good[j]++;
-					objective_num_good[j]++;
+					I_sharing_num_bad[j]++;
+					objective_num_bad[j]++;
 				}
 			}
 			else
@@ -1268,12 +1322,15 @@ void trust_simulation(int num_ID, int num_controller_ID_data, int num_neighbor_I
 				NONE_false++;
 			}
 
-			fprintf(fp, "%i \t %i \t %i \t %i \t %i \t %i \t %i \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %i \t %i \n",
+			fprintf(fp, "%i \t %i \t %i \t %i \t %i \t %i \t %i \t %i \t %i \t %i \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %f \t %i \t %i \n",
 				controller_data_base[target_ID].bad,
 				controller_data_base[target_ID].good,
 				controller_data_base[target_ID].rush_hour,
 				controller_data_base[target_ID].visibility,
 				controller_data_base[target_ID].weather,
+				controller_data_base[target_ID].gender,
+				controller_data_base[target_ID].age,
+				controller_data_base[target_ID].passenger,
 				I_sharing_num_good[target_ID],
 				I_sharing_num_bad[target_ID],
 				I_sharing_tv,
