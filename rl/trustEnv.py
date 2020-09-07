@@ -30,25 +30,32 @@ class trustEnv:
         #load_dataset('../sampledata/additional_features_with_predictions.csv') # load dataset
         self.connect()
         #* creates 3 actions: increase t_threshold OR decrease t_threshold
+        #* general parameters
         self.action_space = ["u", "d", "s"] #* 0, 1, 2
         self.n_actions = len(self.action_space)
-        self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, TN, FN, FP
         self.delta = deltavalue
         self.state = thrvalue
         self.reward_value = rewvalue
+        #* epoch parameters
+        self.average_iteration_accgt =[] # keeps track of accuracy for same configuration during AVERAGEITERATION iteration to make an average. (근데 average해도 되는거야?)
+        self.cumulative_iteration_reward =[]
+        #* step parameters
         self.cur_decision ={}
         self.next_car_index = 1
+        self.cumulative_reward =0 
         self.result_values = defaultdict(lambda: [0, 0, 0, 0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
+        self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, TN, FN, FP
+
 
         self.client = None
 
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.coll = self.db['q_learning']
+        # self.acccoll = self.db['accuracy'] #* contains accuracy
+        # self.rewcoll = self.db['rewards'] #* contains rewards 
+        self.accrewcollection = self.db['acc_rew'] #* contains both and updated with epoches.
 
-
-    
     
     def get_car(self):
         e_trust_val = int(data['I_trust_val'][self.next_car_index]*100)
@@ -119,8 +126,7 @@ class trustEnv:
 
         return reward, self.state
     
-
-    def step2(self, action, car_id, perceived_btrust): 
+    def step2(self, action, car_id): 
         #* inputs an action to current state & gets a reward to this action
         #! should we limit the min max of that threshold? 
         if action == 0: #up
@@ -141,7 +147,7 @@ class trustEnv:
             reward = -(self.reward_value)
         else:
             reward = self.reward_value
-
+        self.cumulative_reward += reward
         ###* Reward주는 방법 2) 이전보다 accuracy가 늘어나면 주기
         # if self.result_values[car_id][3] > self.result_values[car_id-1][3]: #* 이전보다 accuracy가 높아지면 +, 아니면 -
         #     reward = self.reward_value
@@ -150,7 +156,6 @@ class trustEnv:
         # print("id {}, prev {}, cur {}, rew {}".format(car_id, self.result_values[car_id-1][3], self.result_values[car_id][3], reward))
 
         return reward, self.state
-
 
     def drawgraph(self): 
         xvalues = range(0, len(self.result_values))
@@ -175,29 +180,45 @@ class trustEnv:
         plt.savefig(name)
 
     def gt_accuracy(self, nci): #* gets gt accuracy regardless of time
-        if self.cur_decision[nci] == 1 and data['actual_status'][nci] == 1: 
+        if self.cur_decision[nci] == 1 and data['actual_status'][nci] == 1: #TP
             self.cases["gt"][0]+=1
-        elif self.cur_decision[nci]==1 and data['actual_status'][nci] == 0:
+        elif self.cur_decision[nci]==1 and data['actual_status'][nci] == 0: #TN
             self.cases["gt"][1]+=1
-        elif self.cur_decision[nci]==0 and data['actual_status'][nci] == 1:
+        elif self.cur_decision[nci]==0 and data['actual_status'][nci] == 1: #FN
             self.cases["gt"][2]+=1
-        else:
+        else: #FP
             self.cases["gt"][3]+=1
 
         #* Threshold 가 낮으면 그냥 trust하겠다는 의민데, 그렇게하면 
         self.result_values[nci][3] = (self.cases["gt"][0] + self.cases["gt"][3])/(self.cases["gt"][0] + self.cases["gt"][1] + self.cases["gt"][2] + self.cases["gt"][3]) #* TT + FF / all cases
 
-
-    def savetomongo(self,name):
-        ytrust, ythr, yacc, yaccgt = [], [], [], []
+    def savetomongo(self,name): #* simply saves a single run result into the mongo db
+        yrew, ytrust, ythr, yacc, yaccgt = [], [], [], [], []
         for i in range (len(self.result_values)):
             ytrust.append(self.result_values[i][0])
             ythr.append(self.result_values[i][1])
             # yacc.append(self.result_values[i][2]*100.0)
             yaccgt.append(self.result_values[i][3]*100.0)
         row = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yvalue": yaccgt}
-        #print(row)
-        self.coll.insert_one(row)
+        row2 = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yrew": yrew}
+        self.acccoll.insert_one(row)
+        self.rewcoll.insert_one(row2)
+
+    def save_one_iteration(self, epoch): #* accumulates multi run results
+        #* this is at every epoch.
+        # self.average_iteration_accgt[epoch] = self.result_values[len(self.result_values)][3]*100.0 #* save the last value of the epoch.
+        # self.cumulative_iteration_reward[epoch]  = self.cumulative_reward
+
+        self.average_iteration_accgt.append(self.result_values[len(self.result_values)][3]*100.0) #* save the last value of the epoch.
+        self.cumulative_iteration_reward.append(self.cumulative_reward)
+        #self.average_iteration_accgt[count] = yaccgt
+
+
+    def savetomongo_averaged(self, name): #* averages and saves the accumulated multiple run results into the mongo db
+
+        row = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yvalue": self.average_iteration_accgt, "ycrew": self.cumulative_iteration_reward}
+        self.accrewcollection.insert_one(row)
+
 
     def savetojson(self, name, filename):
         ytrust, ythr, yacc, yaccgt = [], [], [], []
@@ -230,10 +251,16 @@ class trustEnv:
         
         self.reset()
 
-    def reset(self):
-        
-        print("[INFO] reseting...")
+    def reset(self): #* per iteration reset
         self.result_values = defaultdict(lambda: [0, 0, 0, 0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
+        self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, TN, FN, FP
+        self.cur_decision ={}
+        self.cumulative_reward =0
+        self.next_car_index = 1
+
+    def resetepoch(self): #* per epoch reset
+        self.average_iteration_accgt = []
+        self.cumulative_iteration_reward = []
 
     def render(self, mode='human', close=False):
         # Render the environment to the screen. Don't think we need this though
