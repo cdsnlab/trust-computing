@@ -189,7 +189,7 @@ class trustEnv:
         else: #FP
             self.cases["gt"][3]+=1
 
-        #* Threshold 가 낮으면 그냥 trust하겠다는 의민데, 그렇게하면 
+        #* 매번 호출 할 때마다 TT + FF / all case 업데이트.
         self.result_values[nci][3] = (self.cases["gt"][0] + self.cases["gt"][3])/(self.cases["gt"][0] + self.cases["gt"][1] + self.cases["gt"][2] + self.cases["gt"][3]) #* TT + FF / all cases
 
     def savetomongo(self,name): #* simply saves a single run result into the mongo db
@@ -208,7 +208,6 @@ class trustEnv:
         #* this is at every epoch.
         # self.average_iteration_accgt[epoch] = self.result_values[len(self.result_values)][3]*100.0 #* save the last value of the epoch.
         # self.cumulative_iteration_reward[epoch]  = self.cumulative_reward
-
         self.average_iteration_accgt.append(self.result_values[len(self.result_values)][3]*100.0) #* save the last value of the epoch.
         self.cumulative_iteration_reward.append(self.cumulative_reward)
         #self.average_iteration_accgt[count] = yaccgt

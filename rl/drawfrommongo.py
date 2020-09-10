@@ -46,7 +46,7 @@ d =   st.multiselect("Delta", [1, 3, 5], default=[1])
 lr =  st.multiselect("Learning rate", [0.01,0.1,0.5, 0.9], default=[0.01])
 df =  st.multiselect("Discount factor", [0.1, 0.5, 0.9], default=[0.1])
 eps = st.multiselect("Epsilon", [0.1, 0.5, 0.9], default=[0.1])
-fd =  st.multiselect("Feedback delay",[5, 10, 50, 100, 200, 500], default=[5])
+fd =  st.multiselect("Feedback delay",[5, 10, 50, 100, 500], default=[5])
 s =   st.multiselect("Total number of steps", [1000, 10000, 50000], default=[1000])
 i =   st.multiselect("Initial starting value", [10, 50, 90], default=[90])
 

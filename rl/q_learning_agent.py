@@ -57,7 +57,7 @@ class QLearningAgent():
 
 if __name__ == "__main__":
 
-    for output in tqdm(named_product(v_d=[1,3,5], v_lr=[0.01, 0.1,0.5, 0.9], v_df=[0.1, 0.5, 0.9], v_eps=[0.1, 0.5, 0.9], v_fd=[5, 10, 50, 100, 500], v_s=[1000, 10000, 50000], v_i=[10, 50, 90])):
+    for output in tqdm(named_product(v_d=[1,3,5], v_lr=[0.1,0.5, 0.9], v_df=[0.1, 0.5, 0.9], v_eps=[0.1, 0.5, 0.9], v_fd=[5, 10, 50, 100], v_s=[1000, 2000, 5000], v_i=[10, 50, 90])):
     #for output in tqdm(named_product(v_d=[1, 3, 5], v_lr=[0.01], v_df=[0.1], v_eps=[0.1], v_fd=[100], v_s=[1000], v_i=[90])):
 
         env = trustEnv(output.v_i, output.v_d, 1)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         evaluation_q = queue.Queue(DELAY)
         env.state = output.v_i
         state = env.state
-        EPOCH = 1000
+        EPOCH = 500
         for i in range(EPOCH): #* RUN THIS 100 times each and make an average.
             while True: 
                 #print(env.next_car_index)
@@ -81,13 +81,13 @@ if __name__ == "__main__":
                     else:
                         evaluation_q.put((car_id, 0))
                 
-                if env.next_car_index >= DELAY :
+                if env.next_car_index >= DELAY : #! 사실상 이때까지 step을 하지 않음으로 feedback이 반영되지 않음.
                     car_id, perceived_btrust = evaluation_q.get()
                     # take action and proceed one step in the environment
                     env.gt_accuracy(car_id) 
 
                     action = agent.get_action(str(state))
-
+                    
                     reward, next_state = env.step2(action, car_id)
 
                     # with sample <s,a,r,s'>, agent learns new q function
