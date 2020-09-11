@@ -5,10 +5,10 @@ import os
 import json
 
 #* for RL 
-import gym
-from gym import spaces
-from gym.utils import seeding
-from collections import defaultdict
+# import gym
+# from gym import spaces
+# from gym.utils import seeding
+# from collections import defaultdict
 #* draw now
 import matplotlib.pyplot as plt
 from pymongo import MongoClient
@@ -54,7 +54,8 @@ class trustEnv:
         self.db = self.client['trustdb']
         # self.acccoll = self.db['accuracy'] #* contains accuracy
         # self.rewcoll = self.db['rewards'] #* contains rewards 
-        self.accrewcollection = self.db['acc_rew'] #* contains both and updated with epoches.
+        #self.accrewcollection = self.db['acc_rew'] #* contains both and updated with epoches.
+        self.accrewcollection = self.db['0.5_500epoch']
 
     
     def get_car(self):
