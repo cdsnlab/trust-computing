@@ -67,7 +67,7 @@ class QLearningAgent():
 
 if __name__ == "__main__":
     #* v_d: delta, v_lr: learning_rate, v_df: discount_factor, v_eps: epsilon, v_fd: feedback_delay, v_s: 
-    for output in named_product(v_d=[1, 2, 5], v_bd=[0.01], v_lr=[0.01], v_df=[0.1], v_eps=[0.1], v_fd=[1, 2, 5, 10], v_s=[20000], v_i=[50]):
+    for output in named_product(v_d=[1, 3, 5, 7, 9], v_bd=[0.01], v_lr=[0.01, 0.1, 0.5], v_df=[0.1, 0.5], v_eps=[0.1, 0.5], v_fd=[1,3,5,7,9], v_s=[40000], v_i=[50]):
     # for output in named_product(v_d=[4,5,6], v_lr=[0.01, 0.1, 0.5], v_df=[0.01, 0.1, 0.5], v_eps=[0.1, 0.5], v_fd=[1, 5, 10], v_s=[30000], v_i=[10, 50, 90]):
     
         env = trustEnv(output.v_i, output.v_d, output.v_bd, 1, 0.5)

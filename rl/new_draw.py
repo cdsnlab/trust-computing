@@ -44,11 +44,11 @@ st.title("graph showing combination of various experiment parameters")
 #reconstruct multiselect options, match it with 
 d =   st.multiselect("Delta", [1,2,3,4,5,6,7,8,9,10], default=[1])
 bd =   st.multiselect("Beta Delta", [0.01, 0.1], default=[0.01])
-lr =  st.multiselect("Learning rate", [0.01,0.1,0.5, 0.9], default=[0.01])
+lr =  st.multiselect("Learning rate", [0.01,0.1,0.5, 0.9], default=[0.1])
 df =  st.multiselect("Discount factor", [0.1, 0.5, 0.9], default=[0.1])
 eps = st.multiselect("Epsilon", [0.1, 0.5, 0.9], default=[0.1])
-fd =  st.multiselect("Feedback delay",[1, 2, 5, 10, 50, 100, 500], default=[1])
-s =   st.multiselect("Total number of steps", [20000], default=[20000])
+fd =  st.multiselect("Feedback delay",[1, 3, 5, 7, 50, 100, 500], default=[1])
+s =   st.multiselect("Total number of steps", [40000], default=[40000])
 i =   st.multiselect("Initial starting value", [10, 50, 90], default=[50])
 
 #! for all pairs of d, lr, df, eps, fd, s, i, create a string and find it from the JSON.s

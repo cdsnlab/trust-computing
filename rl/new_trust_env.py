@@ -15,7 +15,7 @@ from pymongo import MongoClient
 
 print("[INFO] Reading file...")
 #data = pd.read_csv('../sampledata/data_6_.txt', sep='\t', header=0)
-data = pd.read_csv('../sampledata/local_data_ce_db.csv', header=0)
+data = pd.read_csv('../sampledata/local_data100_ce_db.csv', header=0)
 print("[INFO] File loaded")
 
 class trustEnv:
