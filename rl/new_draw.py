@@ -14,7 +14,12 @@ def connect():
     db = client['trustdb']
     #coll = db['q_learning']
     #coll = db['acc_rew']
-    coll = db['new_tv_data']
+    # coll = db['new_tv_data']
+    # coll = db['new_tv_data_reward_calc'] #! 11/16
+    # coll = db['new_tv_data_all'] #! 11/17
+    # coll = db['new_tv_data_delta'] 
+    coll = db['new_tv_data_delta1']
+
 
     return coll
 
@@ -42,14 +47,14 @@ coll = connect()
 data_load_state.text('Loading data...done!')
 st.title("graph showing combination of various experiment parameters")
 #reconstruct multiselect options, match it with 
-d =   st.multiselect("Delta", [1,2,3,4,5,6,7,8,9,10], default=[1])
-bd =   st.multiselect("Beta Delta", [0.01, 0.1], default=[0.01])
-lr =  st.multiselect("Learning rate", [0.01,0.1,0.5, 0.9], default=[0.1])
+d =   st.multiselect("Delta", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default=[1])
+bd =   st.multiselect("Beta", [0.01, 0.1], default=[0.01])
+lr =  st.multiselect("Learning rate", [0.01,0.1,0.5, 0.9], default=[0.01])
 df =  st.multiselect("Discount factor", [0.1, 0.5, 0.9], default=[0.1])
 eps = st.multiselect("Epsilon", [0.1, 0.5, 0.9], default=[0.1])
-fd =  st.multiselect("Feedback delay",[1, 3, 5, 7, 50, 100, 500], default=[1])
-s =   st.multiselect("Total number of steps", [40000], default=[40000])
-i =   st.multiselect("Initial starting value", [10, 50, 90], default=[50])
+fd =  st.multiselect("Feedback delay",[1, 2, 5, 10, 20, 50], default=[1])
+s =   st.multiselect("Total number of steps", [20000], default=[20000])
+i =   st.multiselect("Initial starting value", [50], default=[50])
 
 #! for all pairs of d, lr, df, eps, fd, s, i, create a string and find it from the JSON.s
 allcombination = reconstruct(d, bd, lr, df, eps, fd, s, i)
@@ -59,17 +64,24 @@ fig_accuracy = go.FigureWidget(
 fig_dtt = go.FigureWidget(
     layout=go.Layout(xaxis=dict(title="# vehicles looked at"),yaxis=dict(title="DTT & GT", range=[0, 100], tickvals=list(range(0,100,10))))
     )
+fig_cum_rew = go.FigureWidget(
+    layout=go.Layout(xaxis=dict(title="# vehicles looked at"), yaxis=dict(title="cumulative reward"))
+    )
+
 for k in allcombination:
     xvalue = getxvalue(k)
     myquery = {"id": str(k)}
-    mydoc=list(coll.find(myquery, {"_id":0, "yvalue": 1, "avg_dtt":1, "avg_gt":1}))
+    mydoc=list(coll.find(myquery, {"_id":0, "yvalue": 1, "avg_dtt":1, "avg_gt":1, "cum_rew":1}))
     yvalue = mydoc[0]['yvalue']
     avg_dtt = mydoc[0]['avg_dtt']
     avg_gt = mydoc[0]['avg_gt']
+    cum_rew = mydoc[0]['cum_rew']
     x = np.arange(int(xvalue))
     fig_accuracy.add_trace(go.Scatter(x=x, y=yvalue))
     fig_dtt.add_trace(go.Scatter(x=x, y=avg_dtt, name="Average DTT value"))
     fig_dtt.add_trace(go.Scatter(x=x, y=avg_gt, name="Average GT value"))
+    fig_cum_rew.add_trace(go.Scatter(x=x, y=cum_rew, name="Cumulative rewards"))
 
 st.plotly_chart(fig_accuracy, use_container_width=True)
 st.plotly_chart(fig_dtt, use_container_width=True)
+st.plotly_chart(fig_cum_rew, use_container_width=True)

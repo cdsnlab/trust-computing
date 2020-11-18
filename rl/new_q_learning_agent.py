@@ -15,6 +15,8 @@ from tqdm import tqdm
 #* for RL 
 from new_trust_env import trustEnv
 
+from slack_noti import slacknoti
+
 import faulthandler
 faulthandler.enable()
 
@@ -67,7 +69,9 @@ class QLearningAgent():
 
 if __name__ == "__main__":
     #* v_d: delta, v_lr: learning_rate, v_df: discount_factor, v_eps: epsilon, v_fd: feedback_delay, v_s: 
-    for output in named_product(v_d=[1, 3, 5, 7, 9], v_bd=[0.01], v_lr=[0.01, 0.1, 0.5], v_df=[0.1, 0.5], v_eps=[0.1, 0.5], v_fd=[1,3,5,7,9], v_s=[40000], v_i=[50]):
+    for output in named_product(v_d=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], v_bd=[0.01], v_lr=[0.01], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[20000], v_i=[50]):
+    # for output in named_product(v_d=[1], v_bd=[0.01], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1,3,5,7,9], v_s=[40000], v_i=[50]):
+
     # for output in named_product(v_d=[4,5,6], v_lr=[0.01, 0.1, 0.5], v_df=[0.01, 0.1, 0.5], v_eps=[0.1, 0.5], v_fd=[1, 5, 10], v_s=[30000], v_i=[10, 50, 90]):
     
         env = trustEnv(output.v_i, output.v_d, output.v_bd, 1, 0.5)
@@ -79,10 +83,10 @@ if __name__ == "__main__":
         #env.dtt = output.v_i
         env.state = None
         state = env.state
-        run_counts = 10
+        run_counts = 50
 
         env.connect()
-        time.sleep(1)
+        time.sleep(0.5)
 
         for i in range(run_counts): #* RUN THIS xxx times each and make an average.
 
@@ -117,6 +121,7 @@ if __name__ == "__main__":
             # agent.print_qtable()
         #* this is the end of run_counts, you average everything and save it.
         print("{} finished ".format(output))
+        slacknoti("finished {}".format(output), "s")
         env.save_avg_accuracy(run_counts, output)
-        env.client.close()
+        # env.client.close()
         # env.resetepoch() #어짜피 새로 object를 만들어 버려서 reset할 필요도 없겠는데.

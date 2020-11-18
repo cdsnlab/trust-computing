@@ -44,10 +44,11 @@ class trustEnv:
         self.average_gt=defaultdict(list)
         self.average_state= defaultdict(list)
         self.epoch_accuracy = defaultdict(list)
+        self.cum_reward = defaultdict(list)
         #* step parameters
         self.cur_decision ={}
         self.next_car_index = 1
-        # self.cumulative_reward =0 
+        self.cumulative_reward =0 
         self.cumulative_state=0
         self.cumulative_gt =0
         self.result_values = defaultdict(lambda: [0, 0, 0, 0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
@@ -62,7 +63,9 @@ class trustEnv:
         # self.acccoll = self.db['accuracy'] #* contains accuracy
         # self.rewcoll = self.db['rewards'] #* contains rewards 
         # self.accrewcollection = self.db['a5acc_3actions'] #20201019 meeting data
-        self.accrewcollection = self.db['new_tv_data']
+        # self.accrewcollection = self.db['new_tv_data_reward_calc'] #! 11/16
+        # self.accrewcollection = self.db['new_tv_data_all'] #! 11/17
+        self.accrewcollection = self.db['new_tv_data_delta2']
 
     
     
@@ -146,9 +149,9 @@ class trustEnv:
 
     def step3(self, action, car_id): 
         #* inputs an action to current state & gets a reward to this action
-        #! we should also consider changing betas values too. 
+
         if action == 0: #u
-            if self.dtt + self.delta < 100:
+            if self.dtt + self.delta < 100: #! should you bind this ???
                 self.dtt+=self.delta
 
         elif action == 1: # du
@@ -165,10 +168,10 @@ class trustEnv:
         elif self.cur_decision[car_id]==1 and data['behavior'][car_id] == 0:
             reward = -(self.reward_value) #! penalty
         elif self.cur_decision[car_id]==0 and data['behavior'][car_id] == 1:
-            reward = -(self.reward_value)*2 #! less penalty for upper
+            reward = -(self.reward_value) #! less penalty for upper?? still?
         else:
             reward = self.reward_value
-        # self.cumulative_reward += reward
+        self.cumulative_reward += reward
         self.cumulative_state += self.dtt
         
         # textbeta = format(self.beta, ".2f")
@@ -198,33 +201,38 @@ class trustEnv:
         self.epoch_accuracy[run_counts].append(self.result_values[iteration][3]*100.0) #* save the last value of the iteration.
         self.average_state[run_counts].append(self.cumulative_state / iteration)
         self.average_gt[run_counts].append(self.cumulative_gt / iteration)
+        self.cum_reward[run_counts].append(self.cumulative_reward)
+        # print(self.cumulative_reward)
         # print(self.epoch_accuracy)
 
     def save_avg_accuracy(self, run_counts, name): #! iterate and make average of the iterations.
         # print(len(self.epoch_accuracy[0]))
-        final_acc, final_dtt, final_gt = [], [], []
+        final_acc, final_dtt, final_gt, final_rew= [], [], [], []
         for j in range(len(self.epoch_accuracy[0])):
-            temp ={0:0, 1:0, 2:0} #acc, dtt, gt
+            temp ={0:0, 1:0, 2:0, 3:0} #acc, dtt, gt, rew
 
             for i in range(run_counts):
                 # print("i {} j {}".format(i,j))
                 temp[0]+=self.epoch_accuracy[i][j]  
                 temp[1]+=self.average_state[i][j] 
                 temp[2]+=self.average_gt[i][j] 
+                temp[3]+=self.cum_reward[i][j]
                 # print(self.epoch_accuracy[i][j])
             # print("j: {}, avg {}".format(j, (temp / run_counts)))
             final_acc.append(temp[0]/run_counts)
             final_dtt.append(temp[1]/run_counts)
             final_gt.append(temp[2]/run_counts)
+            final_rew.append(temp[3]/run_counts)
         print(final_acc[-1])
-        row = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yvalue": final_acc, "avg_dtt": final_dtt, "avg_gt": final_gt}
+        # print(final_rew[-1])
+        row = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yvalue": final_acc, "avg_dtt": final_dtt, "avg_gt": final_gt, "cum_rew": final_rew}
         self.accrewcollection.insert_one(row)
 
     def reset(self): #* per iteration reset
         self.result_values = defaultdict(lambda: [0, 0, 0, 0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
         self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, TN, FN, FP
         self.cur_decision ={}
-        # self.cumulative_reward = 0
+        self.cumulative_reward = 0
         self.cumulative_state = 0
         self.cumulative_gt = 0
         self.next_car_index = 1
