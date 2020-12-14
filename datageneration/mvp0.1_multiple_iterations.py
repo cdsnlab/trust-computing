@@ -5,8 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 import keras
-import tqdm as tqdm
-
+from tqdm import tqdm
 from keras.models import Sequential
 from keras.layers import Dense
 
@@ -50,7 +49,7 @@ DIRECT_EVIDENCE_WEIGHT = 0.5
 PPV_THRESHHOLD = 0.95
 NPV_THRESHHOLD = 0.95
 THRESHHOLD_STEP = 0.05
-NUM_SIMULATIONS = 100
+NUM_SIMULATIONS = 2
 
 MBPs = []
 OAPs = []
@@ -139,75 +138,75 @@ class ISharingFriend:
         return self.similarity_value < other.similarity_value
 
 
-def get_base_threshhold(current_id_db, weather, visibility, rush_hour, gender, age, passenger):
-    tv_sum = 0
-    same_context_count = 0
+# def get_base_threshhold(current_id_db, weather, visibility, rush_hour, gender, age, passenger):
+#     tv_sum = 0
+#     same_context_count = 0
 
-    for i in range(NUM_USING_ID):
-        malicious_count = current_id_db[i].history_bad[weather][visibility][rush_hour][gender][age][passenger]
-        benign_count = current_id_db[i].history_good[weather][visibility][rush_hour][gender][age][passenger]
-        if benign_count + malicious_count == 0:
-            continue
-        else:
-            same_context_count += 1
-            tv_sum += benign_count / (benign_count + malicious_count)
+#     for i in range(NUM_USING_ID):
+#         malicious_count = current_id_db[i].history_bad[weather][visibility][rush_hour][gender][age][passenger]
+#         benign_count = current_id_db[i].history_good[weather][visibility][rush_hour][gender][age][passenger]
+#         if benign_count + malicious_count == 0:
+#             continue
+#         else:
+#             same_context_count += 1
+#             tv_sum += benign_count / (benign_count + malicious_count)
 
-    return tv_sum / same_context_count
-
-
-def get_indirect_trust_value(i, ce_db, weather, visibility, rush_hour, gender, age, passenger):
-    closest_friends = get_sorted_i_sharing_friends(ce_db, i)
-    indirect_trust = 0
-    close_friend_with_context_count = 0
-    for isf in closest_friends:
-        isf_id = ce_db[isf.index]
-        good = isf_id.history_good[weather][visibility][rush_hour][gender][age][passenger]
-        bad = isf_id.history_bad[weather][visibility][rush_hour][gender][age][passenger]
-        if good + bad > 0:
-            close_friend_with_context_count += 1
-            indirect_trust += isf.similarity_value * good / (good + bad)
-            if close_friend_with_context_count == NUM_OPTIMAL_FRIENDS:
-                break
-    return indirect_trust / NUM_OPTIMAL_FRIENDS
+#     return tv_sum / same_context_count
 
 
-def get_sorted_i_sharing_friends(ce_db, i):
-    base_id = ce_db[i]
-    i_sharing_friends = []
-    for j in range(NUM_ID):
-        if i == j:
-            continue
-        sum_direct_trust_value = 0
-        context_count = 0
-        for a in range(2):
-            for b in range(2):
-                for c in range(2):
-                    for d in range(2):
-                        for e in range(2):
-                            for f in range(2):
-                                base_good = base_id.history_good[a][b][c][d][e][f]
-                                base_bad = base_id.history_bad[a][b][c][d][e][f]
-                                isf_good = ce_db[j].history_good[a][b][c][d][e][f]
-                                isf_bad = ce_db[j].history_bad[a][b][c][d][e][f]
-                                if base_good + base_bad == 0 or isf_good + isf_bad == 0:
-                                    continue
-                                else:
-                                    context_count += 1
-                                    sum_direct_trust_value += \
-                                        abs(base_good / (base_good + base_bad) - isf_good / (isf_good + isf_bad))
-        if context_count == 0:
-            i_sharing_friends.append(ISharingFriend(0, j))
-        else:
-            similarity_value = 1 - (sum_direct_trust_value / context_count)
-            i_sharing_friends.append(ISharingFriend(similarity_value, j))
-    return sorted(i_sharing_friends, reverse=True)
+# def get_indirect_trust_value(i, ce_db, weather, visibility, rush_hour, gender, age, passenger):
+#     closest_friends = get_sorted_i_sharing_friends(ce_db, i)
+#     indirect_trust = 0
+#     close_friend_with_context_count = 0
+#     for isf in closest_friends:
+#         isf_id = ce_db[isf.index]
+#         good = isf_id.history_good[weather][visibility][rush_hour][gender][age][passenger]
+#         bad = isf_id.history_bad[weather][visibility][rush_hour][gender][age][passenger]
+#         if good + bad > 0:
+#             close_friend_with_context_count += 1
+#             indirect_trust += isf.similarity_value * good / (good + bad)
+#             if close_friend_with_context_count == NUM_OPTIMAL_FRIENDS:
+#                 break
+#     return indirect_trust / NUM_OPTIMAL_FRIENDS
 
 
-def get_indirect_trust_values(ce_db, weather, visibility, rush_hour, gender, age, passenger):
-    indirect_tv = []
-    for i in range(NUM_USING_ID, NUM_USING_ID + NUM_WITH_NO_DIRECT_EVIDENCE):
-        indirect_tv.append(get_indirect_trust_value(i, ce_db, weather, visibility, rush_hour, gender, age, passenger))
-    return indirect_tv
+# def get_sorted_i_sharing_friends(ce_db, i):
+#     base_id = ce_db[i]
+#     i_sharing_friends = []
+#     for j in range(NUM_ID):
+#         if i == j:
+#             continue
+#         sum_direct_trust_value = 0
+#         context_count = 0
+#         for a in range(2):
+#             for b in range(2):
+#                 for c in range(2):
+#                     for d in range(2):
+#                         for e in range(2):
+#                             for f in range(2):
+#                                 base_good = base_id.history_good[a][b][c][d][e][f]
+#                                 base_bad = base_id.history_bad[a][b][c][d][e][f]
+#                                 isf_good = ce_db[j].history_good[a][b][c][d][e][f]
+#                                 isf_bad = ce_db[j].history_bad[a][b][c][d][e][f]
+#                                 if base_good + base_bad == 0 or isf_good + isf_bad == 0:
+#                                     continue
+#                                 else:
+#                                     context_count += 1
+#                                     sum_direct_trust_value += \
+#                                         abs(base_good / (base_good + base_bad) - isf_good / (isf_good + isf_bad))
+#         if context_count == 0:
+#             i_sharing_friends.append(ISharingFriend(0, j))
+#         else:
+#             similarity_value = 1 - (sum_direct_trust_value / context_count)
+#             i_sharing_friends.append(ISharingFriend(similarity_value, j))
+#     return sorted(i_sharing_friends, reverse=True)
+
+
+# def get_indirect_trust_values(ce_db, weather, visibility, rush_hour, gender, age, passenger):
+#     indirect_tv = []
+#     for i in range(NUM_USING_ID, NUM_USING_ID + NUM_WITH_NO_DIRECT_EVIDENCE): #* 100회
+#         indirect_tv.append(get_indirect_trust_value(i, ce_db, weather, visibility, rush_hour, gender, age, passenger))
+#     return indirect_tv
 
 
 def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num, model):
@@ -230,7 +229,7 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
     decision_column = []
     status_column = []
 
-    for interaction in range(NUM_INTERACTION_BEHAVIOR):
+    for interaction in range(NUM_INTERACTION_BEHAVIOR): #* 120개.
         tp = 0  # Correctly detected malicious
         tn = 0  # Correctly detected benign
         fp = 0  # Incorrectly detected malicious
@@ -252,7 +251,7 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
             local_y = initial_data.iloc[:warmup_iterations * NUM_WITH_NO_DIRECT_EVIDENCE, 8:9]
             model.fit(local_x, local_y, epochs=30, batch_size=1000, verbose=0)
 
-        for interaction_vehicle_index in range(NUM_WITH_NO_DIRECT_EVIDENCE):
+        for interaction_vehicle_index in range(NUM_WITH_NO_DIRECT_EVIDENCE): #* 100회 
             interaction_id = current_id_db[(NUM_USING_ID + interaction_vehicle_index)]
             weather = interaction_id.weather
             visibility = interaction_id.visibility
@@ -372,13 +371,14 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
     rl_df = pd.DataFrame({'direct_tv': np.array(np.asarray(direct_tvs)),
                           'indirect_tv': np.array(np.asarray(indirect_tvs)),
                           'status': np.asarray(np.asarray(statuses))})
+    print("[INFO] written to {}".format('rl_df_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv'))
     rl_df.to_csv('rl_df_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv', index=False)
 
 
 
 def get_trained_model(mbp, oap, mvp, iteration_num):
 #    os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
-    print(os.getcwd())
+    # print(os.getcwd())
     data = pd.read_csv('ce_db_' +str(iteration_num)+'_'+ str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv', sep=',', header=0)
     data = data.sample(n=200000, replace=True)
     x = data.iloc[:100000, 0:8]
@@ -425,10 +425,14 @@ def simulate_behavior(mbp, oap, mvp, iteration_num):
     # create history database of the CE
     ce_db = initialize_id_database(mvp)
     current_id_db = deepcopy(ce_db)
-    data_creation(ce_db, 0, NUM_ID, mbp, oap, mvp, iteration_num)
+    print("[INFO] created ce_db for mbp: {}, oap: {}, mvp: {}, iter: {}".format(mbp, oap, mvp, iteration_num))
+    data_creation(ce_db, 0, NUM_ID, mbp, oap, mvp, iteration_num) #* creates ce_db****
     model = get_trained_model(mbp, oap, mvp, iteration_num)
+    print("[INFO] created model for mbp: {}, oap: {}, mvp: {}, iter: {}".format(mbp, oap, mvp, iteration_num))
+
     base_threshhold = 0.5
-    iterate_interactions(current_id_db, base_threshhold, mbp, oap, mvp, iteration_num, model)
+    iterate_interactions(current_id_db, base_threshhold, mbp, oap, mvp, iteration_num, model) #* create rl_db****
+    print("[INFO] iteration done for mbp: {}, oap: {}, mvp: {}, iter: {}".format(mbp, oap, mvp, iteration_num))
 
 
 def initialize_id_database(mvp):
@@ -517,10 +521,10 @@ def get_malicious_behavior_probability(id_obj, weather, visibility, rush_hour, g
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    for iteration in range(NUM_SIMULATIONS):
-        for malicious_behavior_probability in MALICIOUS_BEHAVIOR_PROBABILITIES:
-            for outside_attack_probability in PROB_ATTACKS:
-                for malicious_vehicle_portion in MALICIOUS_VEHICLE_PORTIONS:
+    for iteration in tqdm(range(NUM_SIMULATIONS)): #* 100
+        for malicious_behavior_probability in tqdm(MALICIOUS_BEHAVIOR_PROBABILITIES): #* 5
+            for outside_attack_probability in tqdm(PROB_ATTACKS): #* 5
+                for malicious_vehicle_portion in tqdm(MALICIOUS_VEHICLE_PORTIONS): #* 1
                     print("simulating behavior for mbp: ", malicious_behavior_probability,
                           "oap: ", outside_attack_probability,
                           "mvp: ", malicious_vehicle_portion)
