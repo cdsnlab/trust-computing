@@ -27,11 +27,12 @@ def evaluate(threshold, interval, data, nci):
         # print(nci-i)
 
         #* make decision
-        tv_id = int(data['indirect_tv'][nci-i]*100)
-        if tv_id > threshold:
-            decision[nci-1]=0
+        tv_d = int(data['direct_tv'][nci-i]*100)
+        if tv_d > threshold:
+            decision[nci-i]=0
         else:
-            decision[nci-1]=1
+            decision[nci-i]=1
+        # print(nci-i, decision[nci-i], int(data['status'][nci-i]))
 
         #* verify if its validity
         if decision[nci-i] == 1 and int(data['status'][nci-i]==1):
@@ -42,10 +43,10 @@ def evaluate(threshold, interval, data, nci):
             cases['gt'][2]+=1
         else:
             cases['gt'][3]+=1
-
+    # print(cases)
     #* calucalte precision, accuracy, recall
     #* precision
-    if cases["gt"][0] + cases["gt"][1] == 0:
+    if (cases["gt"][0] + cases["gt"][1]) == 0:
         result_values[nci][0]=100
     else:
         result_values[nci][0] = (cases["gt"][0])/(cases["gt"][0] + cases["gt"][1]) *100 
@@ -81,7 +82,7 @@ for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2,
             evaluate(threshold, INTERVAL, data, next_car_index)
         if next_car_index == (output.v_s):
             row = {"id": str(output), 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec']}
-            # connection.insert_one(row)
+            connection.insert_one(row)
             print (row)
             break
 
