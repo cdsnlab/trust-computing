@@ -340,7 +340,7 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
 
 
 def get_trained_model(mbp, oap, mvp, iteration_num):
-    os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
+    # os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
     data = pd.read_csv('ce_db_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
                        sep=',', header=0)
     data = data.sample(n=200000, replace=True)
