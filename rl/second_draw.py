@@ -19,7 +19,9 @@ def connect():
 
     coll = db['partial']
     rtmcoll = db['rtm']
-    return coll, rtmcoll
+    dtmcoll = db['dtm']
+    istmcoll = db['istm']
+    return coll, rtmcoll, dtmcoll, istmcoll
 
 def named_product(**items):
     Product = namedtuple('Product', items.keys())
@@ -47,7 +49,7 @@ def getxvalue(key): #parse for v_s
             
     
 data_load_state = st.text('Loading data...')
-coll, rtmcoll = connect()
+coll, rtmcoll, dtmcoll, istmcoll = connect()
 data_load_state.text('Loading data...done!')
 st.title("graph showing combination of various experiment parameters")
 #reconstruct multiselect options, match it with 
@@ -60,7 +62,7 @@ fd =  st.multiselect("Feedback delay",[1, 2, 5, 10, 20, 50, 100,200], default=[1
 s =   st.multiselect("Total number of steps", [11000], default=[11000])
 i =   st.multiselect("Initial starting value", [50], default=[50])
 mvp =   st.multiselect("Malicious vehicle probability", [0.1, 0.2, 0.3, 0.4], default=[0.2])
-mbp =   st.multiselect("Malicious Behavior probability", [0.1, 0.2, 0.3, 0.4, 0.5], default=[0.2])
+mbp =   st.multiselect("Malicious Behavior probability", [0.1, 0.2, 0.3, 0.4, 0.5], default=[0.5])
 oap =   st.multiselect("Outside attack probability", [0.1, 0.2, 0.3, 0.4], default=[0.2, 0.4])
 interval =   st.multiselect("Update interval", [10, 20, 50, 100], default=[100])
 dynamicthr = st.multiselect("dynamic threshold", [0,1], default=[0])
@@ -68,6 +70,7 @@ dynamicthr = st.multiselect("dynamic threshold", [0,1], default=[0])
 #! for all pairs of d, lr, df, eps, fd, s, i, create a string and find it from the JSON.s
 allcombination = reconstruct(d, bd, lr, df, eps, fd, s, i, mvp, mbp, oap, interval)
 rtmcombo = reconstruct_rtm(s, mvp, mbp, oap, interval, dynamicthr)
+
 # allcombination.append(rtmcombo)
 # dtmcombo = reconstruct_dtm()
 fig_accuracy = go.FigureWidget(
@@ -102,8 +105,8 @@ for k in allcombination:
     x = np.arange(int(xvalue)/100)
     # print(x)
     fig_accuracy.add_trace(go.Scatter(x=x, y=accuracy, name="OURS"))
-    fig_precision.add_trace(go.Scatter(x=x, y=precision))
-    fig_recall.add_trace(go.Scatter(x=x, y=recall))
+    fig_precision.add_trace(go.Scatter(x=x, y=precision, name="OURS"))
+    fig_recall.add_trace(go.Scatter(x=x, y=recall, name="OURS"))
 
     # fig_dtt.add_trace(go.Scatter(x=x, y=avg_dtt, name="Average DTT value"))
     # fig_dtt.add_trace(go.Scatter(x=x, y=avg_gt, name="Average GT value"))
@@ -114,13 +117,24 @@ for j in rtmcombo:
     xvalue = getxvalue(j)
     myquery = {'id': str(j)}
     mydoc = list(rtmcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1}))
+    mydoc_dtm = list(dtmcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1}))
     accuracy = mydoc[0]['accuracy']
     precision = mydoc[0]['precision']
     recall = mydoc[0]['recall']   
+
+    dtm_accuracy = mydoc_dtm[0]['accuracy']
+    dtm_precision = mydoc_dtm[0]['precision']
+    dtm_recall = mydoc_dtm[0]['recall']   
+
     x = np.arange(int(xvalue)/100)
     fig_accuracy.add_trace(go.Scatter(x=x, y=accuracy, name='RTM'))
-    fig_precision.add_trace(go.Scatter(x=x, y=precision))
-    fig_recall.add_trace(go.Scatter(x=x, y=recall))
+    fig_accuracy.add_trace(go.Scatter(x=x, y=dtm_accuracy, name='DTM'))
+
+    fig_precision.add_trace(go.Scatter(x=x, y=precision, name='RTM'))
+    fig_precision.add_trace(go.Scatter(x=x, y=dtm_precision, name='DTM'))
+
+    fig_recall.add_trace(go.Scatter(x=x, y=recall, name='RTM'))
+    fig_recall.add_trace(go.Scatter(x=x, y=dtm_recall, name='DTM'))
 
 st.plotly_chart(fig_accuracy, use_container_width=True)
 st.plotly_chart(fig_precision, use_container_width=True)

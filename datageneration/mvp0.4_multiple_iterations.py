@@ -11,30 +11,10 @@ from keras.layers import Dense
 
 from keras.optimizers import Adam
 
-# MALICIOUS_VEHICLE_PORTIONS = [0, 0.05, 0.10, 0.15]
-# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.5, 0.6, 0.7, 0.8, 0.9, 1]
-# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.3, 0.5, 0.7, 1]
-
-# MALICIOUS_PROBABILITY = 0.20
-# PROB_ATTACK = 0.2
-# PROB_ATTACKS = [0, 0.1, 0.2, 0.3, 0.4]
-# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.5]
-# PROB_ATTACKS = [0.2]
-# MALICIOUS_VEHICLE_PORTIONS = [0.1, 0.2, 0.3, 0.4]
-
-# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.3, 0.5, 0.7, 1]
-# PROB_ATTACKS = [0.2]
-# MALICIOUS_VEHICLE_PORTIONS = [0.2]
-
 MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.2, 0.3, 0.4, 0.5]
 PROB_ATTACKS = [0.1, 0.15, 0.2, 0.25, 0.3]
 MALICIOUS_VEHICLE_PORTIONS = [0.4]
 
-# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.2, 0.3, 0.4, 0.5]
-# PROB_ATTACKS = [0.2]
-# MALICIOUS_VEHICLE_PORTIONS = [0.2]
-
-# PROB_ATTACKS = [0.05]
 warmup_iterations = 5
 MALICIOUS_STATUS = 1
 BENIGN_STATUS = 0
@@ -50,6 +30,9 @@ PPV_THRESHHOLD = 0.95
 NPV_THRESHHOLD = 0.95
 THRESHHOLD_STEP = 0.05
 NUM_SIMULATIONS = 100
+
+CE_MBP_PER_ENV_CONTEXT = []
+RSU_MBP_PER_ENV_CONTEXT = []
 
 MBPs = []
 OAPs = []
@@ -234,22 +217,6 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
         tn = 0  # Correctly detected benign
         fp = 0  # Incorrectly detected malicious
         fn = 0  # Incorrectly detected benign
-        if interaction == warmup_iterations:
-            initial_data = pd.DataFrame(
-                {
-                    'weather': np.array(np.asarray(weather_column)),
-                    'visibility': np.array(np.asarray(visibility_column)),
-                    'rush_hour': np.array(np.asarray(rush_hour_column)),
-                    'gender': np.array(np.asarray(gender_column)),
-                    'age': np.array(np.asarray(age_column)),
-                    'passenger': np.array(np.asarray(passengers_column)),
-                    'good_history': np.array(np.asarray(good_history_column)),
-                    'bad_history': np.array(np.asarray(bad_history_column)),
-                    'status': np.array(np.asarray(status_column))
-                })
-            local_x = initial_data.iloc[:warmup_iterations * NUM_WITH_NO_DIRECT_EVIDENCE, 0:8]
-            local_y = initial_data.iloc[:warmup_iterations * NUM_WITH_NO_DIRECT_EVIDENCE, 8:9]
-            model.fit(local_x, local_y, epochs=30, batch_size=1000, verbose=0)
 
         for interaction_vehicle_index in range(NUM_WITH_NO_DIRECT_EVIDENCE):
             interaction_id = current_id_db[(NUM_USING_ID + interaction_vehicle_index)]
@@ -260,7 +227,7 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
             age = interaction_id.age
             passenger = interaction_id.passenger
             malicious_prob = get_malicious_behavior_probability(
-                interaction_id, weather, visibility, rush_hour, gender, age, passenger, mbp)
+                interaction_id, weather, visibility, rush_hour, gender, age, passenger, RSU_MBP_PER_ENV_CONTEXT)
             direct_good = interaction_id.history_good[weather][visibility][rush_hour][gender][age][passenger]
             direct_bad = interaction_id.history_bad[weather][visibility][rush_hour][gender][age][passenger]
 
@@ -286,98 +253,96 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
             good_history_column.append(direct_good)
             bad_history_column.append(direct_bad)
             status_column.append(interaction_id.status)
-            if interaction < warmup_iterations:
-                tv_column.append(0)
-                decision_column.append(0)
+            direct_count = direct_good + direct_bad
+            if interaction == 0:
+                direct_tv = 0.5
             else:
-                my_dict = [{'weather': weather,
-                            'visibility': visibility,
-                            'rush_hour': rush_hour,
-                            'gender': gender,
-                            'age': age,
-                            'passenger': passenger,
-                            'good_history': direct_good,
-                            'bad_history': direct_bad,
-                            }]
-                df = pd.DataFrame(my_dict)
-                direct_count = direct_good + direct_bad
                 direct_tv = direct_good / direct_count
-                indirect_tv = 1 - model.predict(df)[0][0]
-                beta = direct_count / (60 + direct_count)
-                tv = direct_tv * beta + indirect_tv * (1 - beta)
+            my_dict = [{'weather': weather,
+                        'visibility': visibility,
+                        'rush_hour': rush_hour,
+                        'gender': gender,
+                        'age': age,
+                        'passenger': passenger,
+                        'good_history': direct_good,
+                        'bad_history': direct_bad,
+                        }]
+            df = pd.DataFrame(my_dict)
+            indirect_tv = 1 - model.predict(df)[0][0]
+            beta = direct_count / (60 + direct_count)
+            tv = direct_tv * beta + indirect_tv * (1 - beta)
 
-                tv_column.append(tv)
-                direct_tvs.append(direct_tv)
-                indirect_tvs.append(indirect_tv)
-                statuses.append(interaction_id.status)
+            tv_column.append(tv)
+            direct_tvs.append(direct_tv)
+            indirect_tvs.append(indirect_tv)
+            statuses.append(interaction_id.status)
 
-                # direct_tv = direct_bad / direct_count
-                # indirect_tv = model.predict(df)[0][0]
-                # beta = direct_count / (60 + direct_count)
-                # tv = direct_tv * beta + indirect_tv * (1 - beta)
+            # direct_tv = direct_bad / direct_count
+            # indirect_tv = model.predict(df)[0][0]
+            # beta = direct_count / (60 + direct_count)
+            # tv = direct_tv * beta + indirect_tv * (1 - beta)
 
-                if tv < threshhold:
-                    decision = MALICIOUS_STATUS
+            if tv < threshhold:
+                decision = MALICIOUS_STATUS
+            else:
+                decision = BENIGN_STATUS
+
+            decision_column.append(decision)
+            if decision == interaction_id.status:
+                if decision == BENIGN_STATUS:
+                    tn += 1
                 else:
-                    decision = BENIGN_STATUS
-
-                decision_column.append(decision)
-                if decision == interaction_id.status:
-                    if decision == BENIGN_STATUS:
-                        tn += 1
-                    else:
-                        tp += 1
+                    tp += 1
+            else:
+                if decision == BENIGN_STATUS:
+                    # print("FN for TV: ", tv)
+                    # print("Direct Bad: ", direct_bad)
+                    # print("Direct Good: ", direct_good)
+                    fn += 1
                 else:
-                    if decision == BENIGN_STATUS:
-                        # print("FN for TV: ", tv)
-                        # print("Direct Bad: ", direct_bad)
-                        # print("Direct Good: ", direct_good)
-                        fn += 1
-                    else:
-                        # print("FP for TV: ", tv)
-                        # print("Direct Bad: ", direct_bad)
-                        # print("Direct Good: ", direct_good)
-                        fp += 1
-        if interaction >= warmup_iterations:
-            accuracy = (tp + tn) / (tp + tn + fp + fn)
-            # print("interaction:", interaction)
-            # print("threshold:", threshhold)
-            # print("tp: ", tp)
-            # print("tn: ", tn)
-            # print("fp: ", fp)
-            # print("fn: ", fn)
-            # print(accuracy)
-            accuracy_sum += accuracy
-            accuracy_per_iteration.append(accuracy)
-        else:
-            accuracy_per_iteration.append(0)
+                    # print("FP for TV: ", tv)
+                    # print("Direct Bad: ", direct_bad)
+                    # print("Direct Good: ", direct_good)
+                    fp += 1
 
-            # if interaction % 2 == 0:
-            total_positive = tp + fp
-            if total_positive != 0:
-                ppv = tp / total_positive
-                if ppv < PPV_THRESHHOLD:
-                    threshhold -= THRESHHOLD_STEP
-                    if threshhold < 0:
-                        threshhold = 0
-            total_negative = tn + fn
-            if total_negative != 0:
-                npv = tn / total_negative
-                if npv < NPV_THRESHHOLD:
-                    threshhold += THRESHHOLD_STEP
-                    if threshhold > 1:
-                        threshhold = 1
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        # print("interaction:", interaction)
+        # print("threshold:", threshhold)
+        # print("tp: ", tp)
+        # print("tn: ", tn)
+        # print("fp: ", fp)
+        # print("fn: ", fn)
+        print(accuracy)
+        accuracy_sum += accuracy
+        accuracy_per_iteration.append(accuracy)
+
+        # if interaction % 2 == 0:
+        total_positive = tp + fp
+        if total_positive != 0:
+            ppv = tp / total_positive
+            if ppv < PPV_THRESHHOLD:
+                threshhold -= THRESHHOLD_STEP
+                if threshhold < 0:
+                    threshhold = 0
+        total_negative = tn + fn
+        if total_negative != 0:
+            npv = tn / total_negative
+            if npv < NPV_THRESHHOLD:
+                threshhold += THRESHHOLD_STEP
+                if threshhold > 1:
+                    threshhold = 1
 
     rl_df = pd.DataFrame({'direct_tv': np.array(np.asarray(direct_tvs)),
                           'indirect_tv': np.array(np.asarray(indirect_tvs)),
                           'status': np.asarray(np.asarray(statuses))})
-    rl_df.to_csv('rl_df_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv', index=False)
+    rl_df.to_csv('rl_df_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
+                 index=False)
 
 
-
-def get_trained_model(mbp, oap, mvp):
+def get_trained_model(mbp, oap, mvp, iteration_num):
     os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
-    data = pd.read_csv('ce_db_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv', sep=',', header=0)
+    data = pd.read_csv('ce_db_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
+                       sep=',', header=0)
     data = data.sample(n=200000, replace=True)
     x = data.iloc[:100000, 0:8]
     y = data.iloc[:100000, 9:10]
@@ -419,13 +384,36 @@ def get_trained_model(mbp, oap, mvp):
     return new_model
 
 
+def get_env_context_index(weather, visibility, rush_hour, gender, age, passenger):
+    return int(str(weather) + str(visibility) + str(rush_hour) + str(gender) + str(age) + str(passenger), 2)
+
+
+def initialize_env_mbp(mbp):
+    for i in range(64):
+        CE_MBP_PER_ENV_CONTEXT.append(mbp + random.uniform(-0.10, 0.10))
+        RSU_MBP_PER_ENV_CONTEXT.append(mbp + random.uniform(-0.10, 0.10))
+
+
+def fine_tuning(model, current_id_df):
+    fine_tuning_data = current_id_df.sample(n=1000)
+    x = fine_tuning_data.iloc[:warmup_iterations * NUM_WITH_NO_DIRECT_EVIDENCE, 0:8]
+    y = fine_tuning_data.iloc[:warmup_iterations * NUM_WITH_NO_DIRECT_EVIDENCE, 9:10]
+    model.fit(x, y, epochs=30, batch_size=1000, verbose=0)
+
+
 def simulate_behavior(mbp, oap, mvp, iteration_num):
     # create history database of the CE
     ce_db = initialize_id_database(mvp)
+    initialize_env_mbp(mbp)
     current_id_db = deepcopy(ce_db)
-    data_creation(ce_db, 0, NUM_ID, mbp, oap, mvp, iteration_num)
-    model = get_trained_model(mbp, oap, mvp)
+    ce_df = data_creation(ce_db, 0, NUM_ID, oap)
+    ce_df.to_csv('ce_db_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
+              index=False)
+    rsu_df = data_creation(current_id_db, NUM_WITH_NO_DIRECT_EVIDENCE, NUM_ID, oap)
+
+    model = get_trained_model(mbp, oap, mvp, iteration_num)
     base_threshhold = 0.5
+    fine_tuning(model, rsu_df)
     iterate_interactions(current_id_db, base_threshhold, mbp, oap, mvp, iteration_num, model)
 
 
@@ -436,7 +424,7 @@ def initialize_id_database(mvp):
     return id_db
 
 
-def data_creation(db, start, end, mbp, oap, mvp, iteration_num):
+def data_creation(db, start, end, oap):
     weather_column = []
     visibility_column = []
     rush_hour_column = []
@@ -457,7 +445,7 @@ def data_creation(db, start, end, mbp, oap, mvp, iteration_num):
                         for e in range(2):
                             for f in range(2):
                                 malicious_prob = get_malicious_behavior_probability(used_id, a, b, c, d, e, f,
-                                                                                    mbp)
+                                                                                    CE_MBP_PER_ENV_CONTEXT)
                                 for g in range(NUM_DATA_PER_CONTEXT):
                                     if random.uniform(0, 1) < malicious_prob:
                                         behavior = MALICIOUS_STATUS
@@ -481,7 +469,7 @@ def data_creation(db, start, end, mbp, oap, mvp, iteration_num):
                                     bad_history_column.append(used_id.history_bad[a][b][c][d][e][f])
                                     behavior_column.append(behavior)
                                     status_column.append(used_id.status)
-    ce_df = pd.DataFrame(
+    df = pd.DataFrame(
         {
             'weather': np.array(np.asarray(weather_column)),
             'visibility': np.array(np.asarray(visibility_column)),
@@ -494,11 +482,11 @@ def data_creation(db, start, end, mbp, oap, mvp, iteration_num):
             'behavior': np.array(np.asarray(behavior_column)),
             'status': np.array(np.asarray(status_column)),
         })
-    ce_df.to_csv('ce_db_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv', index=False)
+    return df
 
 
 def get_malicious_behavior_probability(id_obj, weather, visibility, rush_hour, gender, age,
-                                       passenger, mal_behavior_probability):
+                                       passenger, mbp_per_context):
     if id_obj.status == BENIGN_STATUS:
         malicious_prob = \
             id_obj.personal_bias + id_obj.environmental_bias[weather][visibility][rush_hour][gender][age][passenger]
@@ -510,7 +498,8 @@ def get_malicious_behavior_probability(id_obj, weather, visibility, rush_hour, g
     # probability to display benign behavior when bad/good, rush/not_rush, male/female, under_35/over_45, with/without
     # TODO Try increasing the malicious probability (increase so that it has a clearer difference with the
 
-    return mal_behavior_probability
+    return mbp_per_context[get_env_context_index(weather, visibility, rush_hour, gender, age, passenger)] \
+           + id_obj.personal_bias + id_obj.environmental_bias[weather][visibility][rush_hour][gender][age][passenger]
 
 
 # Press the green button in the gutter to run the script.

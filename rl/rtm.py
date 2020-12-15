@@ -32,38 +32,39 @@ def evaluate(threshold, interval, data, nci):
             decision[nci-i]=0
         else:
             decision[nci-i]=1
+        # print(nci-i, decision[nci-i], int(data['status'][nci-i]))
 
         #* verify if its validity
-        if decision[nci-i] == 1 and int(data['status'][nci-i]==1):
+        if decision[nci-i] == 1 and int(data['status'][nci-i])==1:
             cases['gt'][0]+=1
-        elif decision[nci-i] == 1 and int(data['status'][nci-i]==0):
+        elif decision[nci-i] == 1 and int(data['status'][nci-i])==0:
             cases['gt'][1]+=1
-        elif decision[nci-i] == 0 and int(data['status'][nci-i]==1):
+        elif decision[nci-i] == 0 and int(data['status'][nci-i])==1:
             cases['gt'][2]+=1
         else:
             cases['gt'][3]+=1
-
+    # print(cases)
     #* calucalte precision, accuracy, recall
     #* precision
-    if cases["gt"][0] + cases["gt"][1] == 0:
-        result_values[nci-i][0]=100
+    if (cases["gt"][0] + cases["gt"][1]) == 0:
+        result_values[nci][0]=100
     else:
-        result_values[nci-i][0] = (cases["gt"][0])/(cases["gt"][0] + cases["gt"][1]) *100 
+        result_values[nci][0] = (cases["gt"][0])/(cases["gt"][0] + cases["gt"][1]) *100 
     #* accuracy
     if (cases["gt"][0] + cases["gt"][1] +  cases["gt"][2] + cases["gt"][3]) ==0:
-        result_values[nci-i][1] =100
+        result_values[nci][1] =100
     else:
-        result_values[nci-i][1] = (cases["gt"][0] + cases["gt"][3])/(cases["gt"][0] + cases["gt"][1] + cases["gt"][2] + cases["gt"][3]) *100 
+        result_values[nci][1] = (cases["gt"][0] + cases["gt"][3])/(cases["gt"][0] + cases["gt"][1] + cases["gt"][2] + cases["gt"][3]) *100 
     #* recall
     if (cases["gt"][0] + cases["gt"][2]) == 0:
-        result_values[nci-i][2]=100
+        result_values[nci][2]=100
     else:
-        result_values[nci-i][2] = (cases["gt"][0])/(cases["gt"][0] + cases["gt"][2]) *100
+        result_values[nci][2] = (cases["gt"][0])/(cases["gt"][0] + cases["gt"][2]) *100
     # print(nci, result_values[nci]) 
     # print(nci, cases)
-    final['acc'].append(result_values[nci-i][0])
-    final['pre'].append(result_values[nci-i][1])
-    final['rec'].append(result_values[nci-i][2])
+    final['acc'].append(result_values[nci][0])
+    final['pre'].append(result_values[nci][1])
+    final['rec'].append(result_values[nci][2])
     # return result_values
 
 connection = connect()
