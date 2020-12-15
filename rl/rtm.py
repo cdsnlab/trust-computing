@@ -68,7 +68,7 @@ def evaluate(threshold, interval, data, nci):
     # return result_values
 
 connection = connect()
-for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100], v_dynamic=[0]): 
+for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]): 
     threshold=50
 
     filename = "rl_df_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"

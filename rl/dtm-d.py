@@ -17,7 +17,7 @@ def named_product(**items):
 def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
-    accrewcollection = db['dtm']
+    accrewcollection = db['dtm-d']
     return accrewcollection
 
 def evaluate(threshold, interval, data, nci):
@@ -80,10 +80,20 @@ for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2,
 
         if next_car_index % INTERVAL ==0:
             evaluate(threshold, INTERVAL, data, next_car_index)
+        if next_car_index == 3000 or next_car_index == 4000:
+            #* do dynamic update depending on the NPV, PPV
+            #! CCNC20 paper does not mention anything about delta value though.
+            #TODO 조건부 increment, decrement가 있어야 함. 
+
+            PPV = cases['gt'][0] / (cases['gt'][0] + cases['gt'][1])
+            NPV = cases['gt'][3] / (cases['gt'][3] + cases['gt'][2])
+            
+            threshold+=10
+            print(threshold, PPV, NPV)
         if next_car_index == (output.v_s):
             row = {"id": str(output), 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec']}
             connection.insert_one(row)
-            print (row)
+            # print (row)
             break
 
         next_car_index+=1
