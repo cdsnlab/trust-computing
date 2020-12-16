@@ -64,7 +64,7 @@ class QLearningAgent():
 
 if __name__ == "__main__":
 
-    for output in named_product(v_d=[1], v_bd=[0.05], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
+    for output in named_product(v_d=[1], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
         filename = "rl_df_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
         env = trustEnv(output.v_i, output.v_d, 1, output.v_bd, filename)
         agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         state = env.state
         run_counts = 100
 
-        time.sleep(0.1)
+        # time.sleep(0.1)
 
         for i in range(run_counts): #* RUN THIS xxx times each and make an average.
 
@@ -101,7 +101,6 @@ if __name__ == "__main__":
                     # print(env.next_car_index)
                     action = agent.get_action(state)                    
                     reward, next_state = env.step2(action, env.next_car_index)
-
                     # with sample <s,a,r,s'>, agent learns new q function
                     agent.learn(state, action, reward, next_state)
 
@@ -112,9 +111,13 @@ if __name__ == "__main__":
                 # this is the end of one simulation
                 if env.next_car_index == (STEPS+DELAY)-1:
                     print("run count: {} finished ".format(i))
+                    # print("cases {}".format(env.cases))
+                    print("dtt {}".format(env.dtt))
+                    print("reward {}".format(env.cumulative_reward))
+                    print("beta {}".format(env.beta))
                     print("Accuracy: {}".format(env.accuracy[i][-1]))
                     env.reset()
-                    # agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
+                    agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
                     # print("[INFO] Finished {}th ".format(i))
                     break
                 env.next_car_index+=1
