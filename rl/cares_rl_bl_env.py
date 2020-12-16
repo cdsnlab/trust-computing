@@ -26,11 +26,11 @@ class trustEnv:
         self.data = pd.read_csv('../sampledata/'+filename, header=0)
         print("[INFO] File loaded")
 
-        # self.action_space = ["uu", "ud", "us", "du", "dd", "ds", "su", "sd", "ss"] #* {state, beta} x {up, down, stay}
-        self.action_space = ["u", "d", "s"]
+        self.action_space = ["uu", "ud", "us", "du", "dd", "ds", "su", "sd", "ss"] #* {state, beta} x {up, down, stay}
+        # self.action_space = ["u", "d", "s"]
         self.n_actions = len(self.action_space)
         self.delta = deltavalue
-        # self.bdelta = bdelta
+        self.bdelta = 0.05
         self.dtt = thrvalue
         self.beta = beta #* added beta!
         self.state = None
@@ -60,7 +60,7 @@ class trustEnv:
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['cares']
+        self.accrewcollection = self.db['cares-rl-bl']
 
     def get_car(self):
         
@@ -78,25 +78,81 @@ class trustEnv:
         self.result_values[self.next_car_index][1] = self.dtt # dynamic threshold 값.
         self.cumulative_gt+=tv
 
-    def step3(self, action, car_id): 
+    def step2(self, action, car_id): 
         #* inputs an action to current state & gets a reward to this action
         reward = 0
-        if action == 0: 
-            if self.dtt + self.delta < 100: 
+
+        if action == 0: #uu
+            if self.dtt + self.delta < 100:
                 self.dtt+=self.delta
             else:
-                #! penalty for hitting the ceiling!
                 reward -= self.reward_value
 
-        elif action == 1: # du
+            if self.beta + self.bdelta < 1:
+                self.beta += self.bdelta
+            else:
+                reward -= self.reward_value
+
+        elif action == 1: #ud
+            if self.dtt + self.delta < 100:
+                self.dtt+=self.delta
+            else:
+                reward -= self.reward_value
+
+            if self.beta - self.bdelta > 0:
+                self.beta += -(self.bdelta)
+            else:
+                reward -= self.reward_value
+
+        elif action == 2: # us
+            if self.dtt + self.delta < 100:
+                self.dtt+=self.delta
+            else:
+                reward -= self.reward_value
+
+        elif action == 3: # du
             if self.dtt - (self.delta) > 0:
                 self.dtt-=self.delta
             else:
-                #! penalty for hitting the ceiling!
+                reward -= self.reward_value
+
+            if self.beta + self.bdelta < 1:
+                self.beta += self.bdelta
+            else:
+                reward -= self.reward_value
+
+        elif action == 4: # dd
+            if self.dtt - (self.delta) > 0:
+                self.dtt-=self.delta
+            else:
+                reward -= self.reward_value
+
+            if self.beta - self.bdelta > 0:
+                self.beta += -(self.bdelta)
+            else:
+                reward -= self.reward_value
+
+        elif action == 5: # ds
+            if self.dtt - (self.delta) > 0:
+                self.dtt-=self.delta
+            else:
+                reward -= self.reward_value
+
+        elif action == 6: # su
+            if self.beta + self.bdelta < 1:
+                self.beta += self.bdelta
+            else:
+                reward -= self.reward_value
+
+        elif action == 7: # sd
+            if self.beta - self.bdelta > 0:
+                self.beta += -(self.bdelta)
+            else:
                 reward -= self.reward_value
 
         else: # ss
             self.dtt-=0
+            self.beta-=0
         
         ###* Reward주는 방법 
         ###* 방법1) 여기서 gt_accuracy에서 구한 값의 (TP + TN) / (TP+TN+FP+FN) 로 계산해서 reward값 선정. 
@@ -185,6 +241,7 @@ class trustEnv:
         print("Accuracy: ", final_acc[-1])
         print("Precision: ", final_precision[-1])
         print("Recall: ", final_recall[-1])
+
         row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap, 'v_interval':name.v_interval, "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "accuracy": final_acc, "avg_dtt": final_dtt, "avg_gt": final_gt, "cum_rew": final_rew, 'precision': final_precision, 'recall': final_recall}
         # self.accrewcollection.insert_one(row)
 

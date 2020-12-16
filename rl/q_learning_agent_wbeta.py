@@ -1,16 +1,21 @@
 #* general
 '''
-only rewards at 100 vehicles..............?
+instead of repeating the traffic pattern as EPOCHs, lets use the number of vehicles as EPOCHs (x-axis).
 '''
 import numpy as np
-import time
+import pandas as pd
+import os, time
 from collections import defaultdict
 import random
+import matplotlib.pyplot as plt
 import queue
 from itertools import product, starmap
 from collections import namedtuple
+from tqdm import tqdm
 #* for RL 
-from cares_rl_bl_env import trustEnv
+from trust_env_wbeta import trustEnv
+
+from slack_noti import slacknoti
 
 import faulthandler
 faulthandler.enable()
@@ -63,58 +68,57 @@ class QLearningAgent():
         return random.choice(max_index_list)
 
 if __name__ == "__main__":
+    #* v_d: delta, v_lr: learning_rate, v_df: discount_factor, v_eps: epsilon, v_fd: feedback_delay, v_s: 
+    #! run 6, 7, 8, 9, 10 on 2020/11/19
+    for output in named_product(v_d=[5], v_bd=[0.01, 0.05, 0.1, 0.2, 0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[5000], v_i=[50]):
+    # for output in named_product(v_d=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], v_bd=[0.01], v_lr=[0.01, 0.05, 0.1, 0.2, 0.5], v_df=[0.01, 0.05, 0.1, 0.2, 0.5], v_eps=[0.01, 0.05, 0.1, 0.2, 0.5], v_fd=[1, 2, 5, 10, 20, 50, 100, 200], v_s=[5000], v_i=[50]):
 
-    for output in named_product(v_d=[1], v_bd=[0.05], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
-        filename = "rl_df_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
-        env = trustEnv(output.v_i, output.v_d, 1, output.v_bd, filename)
+    # for output in named_product(v_d=[1], v_bd=[0.01], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1,3,5,7,9], v_s=[40000], v_i=[50]):
+
+    # for output in named_product(v_d=[4,5,6], v_lr=[0.01, 0.1, 0.5], v_df=[0.01, 0.1, 0.5], v_eps=[0.1, 0.5], v_fd=[1, 5, 10], v_s=[30000], v_i=[10, 50, 90]):
+    
+        env = trustEnv(output.v_i, output.v_d, output.v_bd, 1, 0.5)
         agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
         
         DELAY = output.v_fd
         STEPS = output.v_s
-        INTERVAL = output.v_interval
         evaluation_q = queue.Queue(DELAY)
         #env.dtt = output.v_i
-        env.state = None
         state = env.state
-        run_counts = 100
+        run_counts = 10
 
+        # env.connect()
         time.sleep(0.1)
 
         for i in range(run_counts): #* RUN THIS xxx times each and make an average.
 
             while True: 
-                
-                if env.next_car_index <= STEPS: 
-                    # print("inq {}".format(env.next_car_index))
+
+                if env.next_car_index <= STEPS:
                     #car_id = env.next_car_index
                     evaluation_q.put(env.next_car_index)
                     env.get_car()
 
-                if env.next_car_index >= DELAY : #! delay 이후에 실제 event에 대한 verification을 함.
-                    # print("eval {}".format(env.next_car_index))
+                if env.next_car_index >= DELAY : #! 사실상 이때까지 step을 하지 않음으로 feedback이 반영되지 않음.
+                    # car_id, perceived_btrust = evaluation_q.get() #! 딱히 perceived_btrust 가 필요 없음 .. 
                     car_id=evaluation_q.get()
                     # take action and proceed one step in the environment
-                    env.gt_evaluate(car_id) #! 정확도 기록.
-                
-                if env.next_car_index % INTERVAL == 0: #! 무조건 100일때마다 action 취하고, reward 받는걸로
-                    # print("step {}".format(env.next_car_index))
-                    # print(env.next_car_index)
-                    action = agent.get_action(state)                    
-                    reward, next_state = env.step2(action, env.next_car_index)
+                    env.gt_accuracy(car_id) 
+                    action = agent.get_action(state)
+                    
+                    reward, next_state = env.step2(action, car_id)
 
                     # with sample <s,a,r,s'>, agent learns new q function
                     agent.learn(state, action, reward, next_state)
 
                     state = next_state
-                # if env.next_car_index % (100-DELAY) ==0:
-                    env.append_accuracy(i, env.next_car_index-DELAY) #* adds accuracy to the list
+                    env.append_accuracy(i, car_id) #* adds accuracy to the list
                     
                 # this is the end of one simulation
                 if env.next_car_index == (STEPS+DELAY)-1:
-                    print("run count: {} finished ".format(i))
-                    print("Accuracy: {}".format(env.accuracy[i][-1]))
+                    #print("{} finished ".format(output))
                     env.reset()
-                    # agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
+                    agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
                     # print("[INFO] Finished {}th ".format(i))
                     break
                 env.next_car_index+=1
@@ -123,4 +127,5 @@ if __name__ == "__main__":
         print("{} finished ".format(output))
         # slacknoti("finished {}".format(output), "s")
         env.save_avg_accuracy(run_counts, output)
-
+        # env.client.close()
+        # env.resetepoch() #어짜피 새로 object를 만들어 버려서 reset할 필요도 없겠는데.
