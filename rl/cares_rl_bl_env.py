@@ -26,11 +26,11 @@ class trustEnv:
         self.data = pd.read_csv('../sampledata/'+filename, header=0)
         print("[INFO] File loaded")
 
-        # self.action_space = ["uu", "ud", "us", "du", "dd", "ds", "su", "sd", "ss"] #* {state, beta} x {up, down, stay}
-        self.action_space = ["u", "d", "s"]
+        self.action_space = ["uu", "ud", "us", "du", "dd", "ds", "su", "sd", "ss"] #* {state, beta} x {up, down, stay}
+        # self.action_space = ["u", "d", "s"]
         self.n_actions = len(self.action_space)
         self.delta = deltavalue
-        # self.bdelta = bdelta
+        self.bdelta = 0.05
         self.dtt = thrvalue
         self.beta = beta #* added beta!
         self.state = None
@@ -60,7 +60,7 @@ class trustEnv:
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['partial']
+        self.accrewcollection = self.db['cares_rl_bl']
 
     def get_car(self):
         
@@ -78,25 +78,81 @@ class trustEnv:
         self.result_values[self.next_car_index][1] = self.dtt # dynamic threshold 값.
         self.cumulative_gt+=tv
 
-    def step3(self, action, car_id): 
+    def step2(self, action, car_id): 
         #* inputs an action to current state & gets a reward to this action
         reward = 0
-        if action == 0: 
-            if self.dtt + self.delta < 100: 
-                self.dtt+=self.delta
-            else:
-                #! penalty for hitting the ceiling!
-                reward -= self.reward_value
 
-        elif action == 1: # du
+        if action == 0: #uu
+            if self.dtt + self.delta < 100:
+                self.dtt+=self.delta
+            # else:
+            #     reward -= self.reward_value
+
+            if self.beta + self.bdelta < 1:
+                self.beta += self.bdelta
+            # else:
+            #     reward -= self.reward_value
+
+        elif action == 1: #ud
+            if self.dtt + self.delta < 100:
+                self.dtt+=self.delta
+            # else:
+            #     reward -= self.reward_value
+
+            if self.beta - self.bdelta > 0:
+                self.beta += -(self.bdelta)
+            # else:
+            #     reward -= self.reward_value
+
+        elif action == 2: # us
+            if self.dtt + self.delta < 100:
+                self.dtt+=self.delta
+            # else:
+            #     reward -= self.reward_value
+
+        elif action == 3: # du
             if self.dtt - (self.delta) > 0:
                 self.dtt-=self.delta
-            else:
-                #! penalty for hitting the ceiling!
-                reward -= self.reward_value
+            # else:
+            #     reward -= self.reward_value
+
+            if self.beta + self.bdelta < 1:
+                self.beta += self.bdelta
+            # else:
+            #     reward -= self.reward_value
+
+        elif action == 4: # dd
+            if self.dtt - (self.delta) > 0:
+                self.dtt-=self.delta
+            # else:
+            #     reward -= self.reward_value
+
+            if self.beta - self.bdelta > 0:
+                self.beta += -(self.bdelta)
+            # else:
+            #     reward -= self.reward_value
+
+        elif action == 5: # ds
+            if self.dtt - (self.delta) > 0:
+                self.dtt-=self.delta
+            # else:
+            #     reward -= self.reward_value
+
+        elif action == 6: # su
+            if self.beta + self.bdelta < 1:
+                self.beta += self.bdelta
+            # else:
+            #     reward -= self.reward_value
+
+        elif action == 7: # sd
+            if self.beta - self.bdelta > 0:
+                self.beta += -(self.bdelta)
+            # else:
+            #     reward -= self.reward_value
 
         else: # ss
             self.dtt-=0
+            self.beta-=0
         
         ###* Reward주는 방법 
         ###* 방법1) 여기서 gt_accuracy에서 구한 값의 (TP + TN) / (TP+TN+FP+FN) 로 계산해서 reward값 선정. 
@@ -108,16 +164,21 @@ class trustEnv:
         #     reward-=self.reward_value
         ###* 방법2) 구체적으로 FP나 FN의 갯수가 증가되면 negative reward를 주는 방식? 
         if self.tempcases['gt'][1] > self.previousFP or self.tempcases['gt'][2] > self.previousFN:
-            reward -= self.reward_value *2
+            reward -= self.reward_value * (self.tempcases['gt'][1]+self.tempcases['gt'][2]) /100
+        else:
+            reward += self.reward_value
                 
         self.previousFP = self.tempcases['gt'][1]
         self.previousFN = self.tempcases['gt'][2]
 
         self.cumulative_reward += reward
         self.cumulative_state += self.dtt
-        
+        textbeta = format(self.beta, ".2f")
+
+        self.state = (textbeta, self.dtt)
+
         self.tempcases = defaultdict(lambda:[0, 0, 0, 0]) #! tempcases를 초기화 해야됨.  
-        return reward, self.dtt #self.state
+        return reward, self.state #self.state
 
     def gt_evaluate(self, nci): #* gets gt accuracy regardless of time
         if self.cur_decision[nci] == 1 and self.data['status'][nci] == 1: #TP
@@ -185,8 +246,9 @@ class trustEnv:
         print("Accuracy: ", final_acc[-1])
         print("Precision: ", final_precision[-1])
         print("Recall: ", final_recall[-1])
+
         row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap, 'v_interval':name.v_interval, "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "accuracy": final_acc, "avg_dtt": final_dtt, "avg_gt": final_gt, "cum_rew": final_rew, 'precision': final_precision, 'recall': final_recall}
-        # self.accrewcollection.insert_one(row)
+        self.accrewcollection.insert_one(row)
 
     def reset(self): #* per iteration reset
         self.result_values = defaultdict(lambda: [0, 0, 0, 0,0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
@@ -197,9 +259,13 @@ class trustEnv:
         self.cumulative_gt = 0
         self.next_car_index = 1
         self.dtt = self.originals[0]
+        self.previousFP=0
+        self.previousFN=0
 
     def resetepoch(self): #* per epoch reset
 
         self.accuracy =defaultdict(list)
+        self.precision=defaultdict(list)
+        self.recall=defaultdict(list)
         self.average_state =defaultdict(list)
         self.average_gt =defaultdict(list)

@@ -83,19 +83,23 @@ for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2,
 
         if next_car_index % INTERVAL ==0:
             evaluate(threshold, INTERVAL, data, next_car_index, BETA)
-        if next_car_index == 3000 or next_car_index == 4000:
-            #* do dynamic update depending on the NPV, PPV
-            #! CCNC20 paper does not mention anything about delta value though.
-            #TODO 조건부 increment, decrement가 있어야 함. 
+        # if next_car_index % 200 == 0:
             PPV = cases['gt'][0] / (cases['gt'][0] + cases['gt'][1])
+            if PPV < 0.95:
+                threshold-=5
+                if threshold <0:
+                    threshold=0
             NPV = cases['gt'][3] / (cases['gt'][3] + cases['gt'][2])
-            # print(PPV, NPV)
-            threshold+=10
+            if NPV < 0.95:
+                threshold+=5
+                if threshold>100:
+                    threshold=100
+            print(next_car_index,  threshold, PPV, NPV)
 
         if next_car_index == (output.v_s):
             row = {"id": str(output), 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec']}
-            connection.insert_one(row)
-            # print (row)
+            # connection.insert_one(row)
+            print(final['acc'][-1])
             break
 
         next_car_index+=1
@@ -103,7 +107,3 @@ for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2,
     result_values = defaultdict(lambda:[0,0,0]) #* precision, accuracy, recall
 
     final = defaultdict(list)
-
-
-
-

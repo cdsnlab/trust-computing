@@ -29,7 +29,7 @@ DIRECT_EVIDENCE_WEIGHT = 0.5
 PPV_THRESHHOLD = 0.95
 NPV_THRESHHOLD = 0.95
 THRESHHOLD_STEP = 0.05
-NUM_SIMULATIONS = 1
+NUM_SIMULATIONS = 100
 
 CE_MBP_PER_ENV_CONTEXT = []
 RSU_MBP_PER_ENV_CONTEXT = []
@@ -57,12 +57,6 @@ class ID:
         self.passenger = random.choices(binary, passenger_weight)[0]
 
         self.index = index
-        self.env_visibility = 0
-        self.env_visibility = 0
-        self.env_visibility = 0
-        self.env_visibility = 0
-        self.env_visibility = 0
-        self.env_visibility = 0
         self.personal_bias = random.uniform(-0.025, 0.025)
         self.environmental_bias = []
         self.history_good = []
@@ -109,18 +103,6 @@ class ID:
             self.history_bad.append(visibility_bad)
 
 
-class ISharingFriend:
-    def __init__(self, similarity_value, index):
-        self.similarity_value = similarity_value
-        self.index = index
-
-    def __eq__(self, other):
-        return self.similarity_value == other.similarity_value and self.index == other.index
-
-    def __lt__(self, other):
-        return self.similarity_value < other.similarity_value
-
-
 def get_base_threshhold(current_id_db, weather, visibility, rush_hour, gender, age, passenger):
     tv_sum = 0
     same_context_count = 0
@@ -135,61 +117,6 @@ def get_base_threshhold(current_id_db, weather, visibility, rush_hour, gender, a
             tv_sum += benign_count / (benign_count + malicious_count)
 
     return tv_sum / same_context_count
-
-
-def get_indirect_trust_value(i, ce_db, weather, visibility, rush_hour, gender, age, passenger):
-    closest_friends = get_sorted_i_sharing_friends(ce_db, i)
-    indirect_trust = 0
-    close_friend_with_context_count = 0
-    for isf in closest_friends:
-        isf_id = ce_db[isf.index]
-        good = isf_id.history_good[weather][visibility][rush_hour][gender][age][passenger]
-        bad = isf_id.history_bad[weather][visibility][rush_hour][gender][age][passenger]
-        if good + bad > 0:
-            close_friend_with_context_count += 1
-            indirect_trust += isf.similarity_value * good / (good + bad)
-            if close_friend_with_context_count == NUM_OPTIMAL_FRIENDS:
-                break
-    return indirect_trust / NUM_OPTIMAL_FRIENDS
-
-
-def get_sorted_i_sharing_friends(ce_db, i):
-    base_id = ce_db[i]
-    i_sharing_friends = []
-    for j in range(NUM_ID):
-        if i == j:
-            continue
-        sum_direct_trust_value = 0
-        context_count = 0
-        for a in range(2):
-            for b in range(2):
-                for c in range(2):
-                    for d in range(2):
-                        for e in range(2):
-                            for f in range(2):
-                                base_good = base_id.history_good[a][b][c][d][e][f]
-                                base_bad = base_id.history_bad[a][b][c][d][e][f]
-                                isf_good = ce_db[j].history_good[a][b][c][d][e][f]
-                                isf_bad = ce_db[j].history_bad[a][b][c][d][e][f]
-                                if base_good + base_bad == 0 or isf_good + isf_bad == 0:
-                                    continue
-                                else:
-                                    context_count += 1
-                                    sum_direct_trust_value += \
-                                        abs(base_good / (base_good + base_bad) - isf_good / (isf_good + isf_bad))
-        if context_count == 0:
-            i_sharing_friends.append(ISharingFriend(0, j))
-        else:
-            similarity_value = 1 - (sum_direct_trust_value / context_count)
-            i_sharing_friends.append(ISharingFriend(similarity_value, j))
-    return sorted(i_sharing_friends, reverse=True)
-
-
-def get_indirect_trust_values(ce_db, weather, visibility, rush_hour, gender, age, passenger):
-    indirect_tv = []
-    for i in range(NUM_USING_ID, NUM_USING_ID + NUM_WITH_NO_DIRECT_EVIDENCE):
-        indirect_tv.append(get_indirect_trust_value(i, ce_db, weather, visibility, rush_hour, gender, age, passenger))
-    return indirect_tv
 
 
 def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num, model):
@@ -312,7 +239,8 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
         # print("tn: ", tn)
         # print("fp: ", fp)
         # print("fn: ", fn)
-        print(accuracy)
+        # print(accuracy)
+
         accuracy_sum += accuracy
         accuracy_per_iteration.append(accuracy)
 
@@ -335,12 +263,12 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
     rl_df = pd.DataFrame({'direct_tv': np.array(np.asarray(direct_tvs)),
                           'indirect_tv': np.array(np.asarray(indirect_tvs)),
                           'status': np.asarray(np.asarray(statuses))})
-    rl_df.to_csv('rl_df_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
+    rl_df.to_csv('cares_df_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
                  index=False)
 
 
 def get_trained_model(mbp, oap, mvp, iteration_num):
-    # os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
+    os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
     data = pd.read_csv('ce_db_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
                        sep=',', header=0)
     data = data.sample(n=200000, replace=True)
