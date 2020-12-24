@@ -36,8 +36,16 @@ class QLearningAgent():
         self.q_table[state][action] += self.learning_rate * (new_q - current_q)
         # print(self.q_table)
 
+    def decayed_eps(self, current_step, max_step):
+        p_init = self.epsilon
+        p_end = 0.05
+        r = max((max_step-current_step)/max_step, 0)
+        # print((p_init-p_end)*r + p_end)
+        self.epsilon=(p_init-p_end)*r + p_end
+
     def print_qtable(self): 
         print(self.q_table)
+
     def get_action(self, state):
         if np.random.rand() < self.epsilon:
             # take random action
@@ -64,8 +72,13 @@ class QLearningAgent():
 
 if __name__ == "__main__":
 
-    for output in named_product(v_d=[1], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
-        filename = "rl_df_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
+    for output in named_product(v_d=[3, 5, 7], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50, 90], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
+        # v_mvp=[0.1, 0.2, 0.3], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3],
+        #mvp: 0.1, 0.2, 0.3
+        #mbp: 0.1, 0.2, 0.3, 0.4, 0.5
+        #oap: 0.1, 0.15, 0.2, 0.25, 0.3
+        # filename = "rl_df_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
+        filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
         env = trustEnv(output.v_i, output.v_d, 1, output.v_bd, filename)
         agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
         
@@ -76,13 +89,13 @@ if __name__ == "__main__":
         #env.dtt = output.v_i
         env.state = None
         state = env.state
-        run_counts = 100
+        run_counts = 10
 
-        # time.sleep(0.1)
 
         for i in range(run_counts): #* RUN THIS xxx times each and make an average.
 
             while True: 
+                # time.sleep(0.005)
                 
                 if env.next_car_index <= STEPS: 
                     # print("inq {}".format(env.next_car_index))
@@ -99,6 +112,7 @@ if __name__ == "__main__":
                 if env.next_car_index % INTERVAL == 0: #! 무조건 100일때마다 action 취하고, reward 받는걸로
                     # print("step {}".format(env.next_car_index))
                     # print(env.next_car_index)
+                    agent.decayed_eps(env.next_car_index, STEPS)
                     action = agent.get_action(state)                    
                     reward, next_state = env.step3(action, env.next_car_index)
 

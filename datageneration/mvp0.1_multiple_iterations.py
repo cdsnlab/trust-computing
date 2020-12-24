@@ -5,14 +5,16 @@ import pandas as pd
 import numpy as np
 import os
 import keras
-
+import cProfile
 from keras.models import Sequential
 from keras.layers import Dense
 
 from keras.optimizers import Adam
 
-MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.2, 0.3, 0.4, 0.5]
-PROB_ATTACKS = [0.1, 0.15, 0.2, 0.25, 0.3]
+# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.2, 0.3, 0.4, 0.5]
+MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1]
+PROB_ATTACKS = [0.1]
+# PROB_ATTACKS = [0.1, 0.15, 0.2, 0.25, 0.3]
 MALICIOUS_VEHICLE_PORTIONS = [0.1]
 
 warmup_iterations = 5
@@ -24,12 +26,12 @@ NUM_DE = 20000
 NUM_WITH_NO_DIRECT_EVIDENCE = 100
 NUM_DATA_PER_CONTEXT = 500
 NUM_OPTIMAL_FRIENDS = 7
-NUM_INTERACTION_BEHAVIOR = 120
+NUM_INTERACTION_BEHAVIOR = 600 #* each vehicle interacts 600 times per scenario.
 DIRECT_EVIDENCE_WEIGHT = 0.5
 PPV_THRESHHOLD = 0.95
 NPV_THRESHHOLD = 0.95
-THRESHHOLD_STEP = 0.05
-NUM_SIMULATIONS = 100
+THRESHHOLD_STEP = 0.05 #* dynamic threshold.
+NUM_SIMULATIONS = 1
 
 CE_MBP_PER_ENV_CONTEXT = []
 RSU_MBP_PER_ENV_CONTEXT = []
@@ -171,6 +173,7 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
             else:
                 interaction_id.history_good[weather][visibility][rush_hour][gender][age][passenger] += 1
 
+            #* can remove this for generating CARES data
             weather_column.append(weather)
             visibility_column.append(visibility)
             rush_hour_column.append(rush_hour)
@@ -268,7 +271,7 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
 
 
 def get_trained_model(mbp, oap, mvp, iteration_num):
-    os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
+    # os.chdir('/Users/kpark/PycharmProjects/TransferLearning/')
     data = pd.read_csv('ce_db_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
                        sep=',', header=0)
     data = data.sample(n=200000, replace=True)
@@ -439,7 +442,8 @@ if __name__ == '__main__':
                     print("simulating behavior for mbp: ", malicious_behavior_probability,
                           "oap: ", outside_attack_probability,
                           "mvp: ", malicious_vehicle_portion)
-                    simulate_behavior(malicious_behavior_probability,
-                                      outside_attack_probability,
-                                      malicious_vehicle_portion,
-                                      iteration)
+                    cProfile.run(simulate_behavior(malicious_behavior_probability, outside_attack_probability, malicious_vehicle_portion, iteration))
+                    # simulate_behavior(malicious_behavior_probability,
+                    #                   outside_attack_probability,
+                    #                   malicious_vehicle_portion,
+                    #                   iteration)

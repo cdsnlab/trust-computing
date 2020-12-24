@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 
+import statistics
 
 #* for RL 
 #import gym
@@ -22,7 +23,7 @@ class trustEnv:
         self.originals = [thrvalue, deltavalue, rewvalue]
         #* creates 3 actions: increase t_threshold OR decrease t_threshold
         #* general parameters
-        print("[INFO] Reading file...")
+        print("[INFO] Reading file... {}".format(filename))
         self.data = pd.read_csv('../sampledata/'+filename, header=0)
         print("[INFO] File loaded")
 
@@ -38,6 +39,8 @@ class trustEnv:
         #* epoch parameters
         self.previousFP=0.0
         self.previousFN=0.0
+        self.ppreviousFP=0.0
+        self.ppreviousFN=0.0
     
         self.average_gt=defaultdict(list)
         self.average_state= defaultdict(list)
@@ -54,6 +57,7 @@ class trustEnv:
         self.result_values = defaultdict(lambda: [0, 0, 0, 0,0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
         self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
         self.tempcases = defaultdict(lambda:[0,0,0,0]) #* temporary cases for 100 vehicles. 
+        self.ttempcases = defaultdict(lambda:[0,0,0,0]) #* temporary cases for 100 vehicles. 
         self.client = None
         self.connect()
 
@@ -66,9 +70,9 @@ class trustEnv:
         
         tv_id = int(self.data['indirect_tv'][self.next_car_index]*100)
         tv_d = int(self.data['direct_tv'][self.next_car_index]*100)
-
         tv = (self.beta * tv_id + (1-self.beta) * tv_d) #! if beta close to 1 -> indirect evidence 
-        
+        # print(self.next_car_index, self.dtt, tv_id, tv_d, tv)
+
         if tv > self.dtt:
             self.cur_decision[self.next_car_index]=0 #! if benign, it should be over dtt
         else: 
@@ -84,6 +88,8 @@ class trustEnv:
         if action == 0: 
             if self.dtt + self.delta < 100: 
                 self.dtt+=self.delta
+                # reward += self.reward_value
+
             # else:
             #     #! penalty for hitting the ceiling! BUT then we don't know if this was the cause of bad reward.
             #     reward -= self.reward_value
@@ -91,6 +97,8 @@ class trustEnv:
         elif action == 1: # du
             if self.dtt - (self.delta) > 0:
                 self.dtt-=self.delta
+                # reward += self.reward_value
+
             # else:
             #     #! penalty for hitting the ceiling!
             #     reward -= self.reward_value
@@ -106,14 +114,45 @@ class trustEnv:
         #     reward+=self.reward_value
         # else:
         #     reward-=self.reward_value
-        ###* 방법2) 구체적으로 FP나 FN의 갯수가 증가되면 negative reward를 주는 방식? 
-        if self.tempcases['gt'][1] > self.previousFP or self.tempcases['gt'][2] > self.previousFN:
-            reward -= self.reward_value * (self.tempcases['gt'][1]+self.tempcases['gt'][2])
+        ###* 방법2) 구체적으로 FP나 FN의 갯수가 이전에 비해서 증가되면 negative reward를 주는 방식? 
+        # if self.tempcases['gt'][1] > self.previousFP or self.tempcases['gt'][2] > self.previousFN:
+        #     reward -= self.reward_value * (self.tempcases['gt'][1]+self.tempcases['gt'][2]) /100
+        # else:
+        #     reward += self.reward_value
+                
+        # self.previousFP = self.tempcases['gt'][1]
+        # self.previousFN = self.tempcases['gt'][2]
+        ###* 방법3) FN가 가장 낮춰야 할 목표. FP는 그다음, ceiling/floor 치는 것은 그다음 중요도.
+        # if self.tempcases['gt'][2] > self.previousFN:
+        #     # reward -= self.reward_value * 10        
+        #     pass
+        # else:
+        #     reward += self.reward_value *10
+        # if self.tempcases['gt'][1] > self.previousFP:
+        #     # reward -= self.reward_value * 10
+        #     pass
+        # else:
+        #     reward += self.reward_value *10
+        # print(self.next_car_index, self.tempcases['gt'], self.previousFN, self.previousFP, self.dtt, reward )
+
+        # self.previousFP = self.tempcases['gt'][1]
+        # self.previousFN = self.tempcases['gt'][2]        
+
+        ###* 방법4) FP, FN 변화량에 따른 방법: 첫 몇회만 100% 나오는 이유가 뭐지?
+        
+        if self.tempcases['gt'][2] - self.ttempcases['gt'][2] > 0: 
+            reward += self.reward_value*2
         else:
+            reward -= self.reward_value*2
+        if self.tempcases['gt'][1] - self.ttempcases['gt'][1]>= 0:
             reward += self.reward_value
-        # print(self.next_car_index, self.tempcases['gt'],self.previousFP )
-        self.previousFP = self.tempcases['gt'][1]
-        self.previousFN = self.tempcases['gt'][2]
+        else:
+            reward -= self.reward_value
+        self.previousFP = self.tempcases['gt'][1] - self.previousFP
+        self.previousFN = self.tempcases['gt'][2] - self.previousFN  
+        # print(self.next_car_index, self.ttempcases['gt'], self.tempcases['gt'], self.dtt, reward )
+        self.ttempcases['gt'] = self.tempcases['gt']
+
 
         self.cumulative_reward += reward
         self.cumulative_state += self.dtt
@@ -163,11 +202,12 @@ class trustEnv:
 
     def save_avg_accuracy(self, run_counts, name): #! iterate and make average of the iterations.
         # print(len(self.accuracy[0]))
-        final_acc, final_dtt, final_gt, final_rew, final_precision, final_recall= [], [], [], [], [], []
+        final_acc, final_dtt, final_gt, final_rew, final_precision, final_recall, final_acc_error= [], [], [], [], [], [],[]
         # print(len(self.accuracy[0]))
+        # print(self.accuracy[:][-1])
         for j in range(len(self.accuracy[0])):
-            temp ={0:0, 1:0, 2:0, 3:0, 4:0, 5:0} #acc, dtt, gt, rew
-
+            temp ={0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0} #acc, dtt, gt, rew
+            errors=[]
             for i in range(run_counts):
                 # print("i {} j {}".format(i,j))
                 temp[0]+=self.accuracy[i][j]  
@@ -176,6 +216,9 @@ class trustEnv:
                 temp[3]+=self.cum_reward[i][j]
                 temp[4]+=self.precision[i][j] 
                 temp[5]+=self.recall[i][j] 
+                errors.append(self.accuracy[i][j])
+            # print(errors)
+            final_acc_error.append(statistics.stdev(errors))
             # print(temp)
             final_acc.append(temp[0]/run_counts)
             final_dtt.append(temp[1]/run_counts)
@@ -183,12 +226,13 @@ class trustEnv:
             final_rew.append(temp[3]/run_counts)
             final_precision.append(temp[4]/run_counts)
             final_recall.append(temp[5]/run_counts)
-        
+            
+            # print(final_acc_error)
         print("Accuracy: ", final_acc[-1])
         print("Precision: ", final_precision[-1])
         print("Recall: ", final_recall[-1])
         row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap, 'v_interval':name.v_interval, "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "accuracy": final_acc, "avg_dtt": final_dtt, "avg_gt": final_gt, "cum_rew": final_rew, 'precision': final_precision, 'recall': final_recall}
-        self.accrewcollection.insert_one(row)
+        # self.accrewcollection.insert_one(row)
 
     def reset(self): #* per iteration reset
         self.result_values = defaultdict(lambda: [0, 0, 0, 0,0]) #* actual trust value, dynamic threshold value, estimated accuracy, actual accuracy
