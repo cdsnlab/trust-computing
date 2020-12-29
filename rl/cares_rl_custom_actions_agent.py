@@ -1,6 +1,6 @@
 #* general
 '''
-only rewards at 100 vehicles..............?
+actions consists of large ups and large downs instead of static ups and downs
 '''
 import numpy as np
 import time
@@ -10,7 +10,7 @@ import queue
 from itertools import product, starmap
 from collections import namedtuple
 #* for RL 
-from cares_rl_bl_env import trustEnv
+from custom_actions_env import trustEnv
 
 import faulthandler
 faulthandler.enable()
@@ -25,7 +25,7 @@ class QLearningAgent():
         self.learning_rate = lr
         self.discount_factor = df
         self.epsilon = eps
-        self.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0]) #* this depends on the number of actions the system can make.
+        self.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0]) #* -9, -6 -3, 0, 3, 6, 9
         # self.q_table = defaultdict(lambda:[0, 0, 0])
     
     def learn (self, state, action, reward, next_state):
@@ -50,7 +50,7 @@ class QLearningAgent():
         #* block out unavailable choices.
         notDone = True
         while notDone:
-            
+            # print(state, action_list)
             if np.random.rand() < self.epsilon:
                 # take random action
                 action = np.random.choice(self.actions)
@@ -76,7 +76,7 @@ class QLearningAgent():
         return random.choice(max_index_list)
 
 if __name__ == "__main__":
-    for output in named_product(v_d=[1, 3, 5, 7, 9], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
+    for output in named_product(v_d=[1], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50, 90], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
 
     # for output in named_product(v_d=[3], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_interval=[100]):
     # for output in named_product(v_d=[1], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
@@ -89,7 +89,6 @@ if __name__ == "__main__":
         INTERVAL = output.v_interval
         evaluation_q = queue.Queue(DELAY)
         #env.dtt = output.v_i
-        # env.state = None
         state = env.dtt
         run_counts = 10
 
@@ -116,7 +115,8 @@ if __name__ == "__main__":
                     agent.decayed_eps(env.next_car_index, STEPS)
 
                     # print(env.next_car_index)
-                    action = agent.get_action(state)                    
+                    action = agent.get_action(state, list(env.action_space))
+                    # print(env.dtt, action)                
                     reward, next_state = env.step2(action, env.next_car_index)
                     # with sample <s,a,r,s'>, agent learns new q function
                     agent.learn(state, action, reward, next_state)
@@ -127,12 +127,14 @@ if __name__ == "__main__":
                     
                 # this is the end of one simulation
                 if env.next_car_index == (STEPS):
+                    # agent.print_qtable()
                     print("run count: {} finished ".format(i))
                     print("dtt {}".format(env.dtt))
                     # print("beta {}".format(env.beta))
                     print("Accuracy: {}".format(env.accuracy[i][-1]))
+                    # agent.print_qtable()
                     env.reset()
-                    agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
+                    agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0])
                     # print("[INFO] Finished {}th ".format(i))
                     break
                 env.next_car_index+=1

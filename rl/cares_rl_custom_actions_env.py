@@ -2,8 +2,6 @@
 import numpy as np
 import pandas as pd
 
-import statistics
-
 #* for RL 
 #import gym
 #from gym import spaces
@@ -12,6 +10,7 @@ from collections import defaultdict
 #* draw now
 import matplotlib.pyplot as plt
 from pymongo import MongoClient
+import statistics
 
 class trustEnv:
     """ trust threshold getter
@@ -21,34 +20,31 @@ class trustEnv:
     def __init__(self, thrvalue, deltavalue, rewvalue, beta, filename):
         super(trustEnv, self).__init__()
         self.originals = [thrvalue, deltavalue, rewvalue]
-        #* creates 3 actions: increase t_threshold OR decrease t_threshold
-        #* general parameters
-        print("[INFO] Reading file... {}".format(filename))
+
+        print("[INFO] Reading file...")
         self.data = pd.read_csv('../sampledata/'+filename, header=0)
         print("[INFO] File loaded")
 
-        # self.action_space = ["uu", "ud", "us", "du", "dd", "ds", "su", "sd", "ss"] #* {state, beta} x {up, down, stay}
-        self.action_space = [-1, 0, 1]
+        self.action_space = [-9, -6, -3, 0, 3, 6, 9] 
         self.n_actions = len(self.action_space)
         self.delta = deltavalue
-        # self.bdelta = bdelta
+        self.bdelta = 0.05
         self.dtt = thrvalue
         self.beta = beta #* added beta!
         self.state = None
         self.reward_value = rewvalue
         #* epoch parameters
-
+        self.previousFP=0.0
+        self.previousFN=0.0
+    
         self.average_gt=defaultdict(list)
         self.average_state= defaultdict(list)
         self.accuracy = defaultdict(list)
         self.precision = defaultdict(list)
-        self.recall = defaultdict(list)
         self.f1score = defaultdict(list)
+        self.recall = defaultdict(list)
         self.cum_reward = defaultdict(list)
         self.cumulative_reward = defaultdict(int)
-
-        self.PPV = 0
-        self.NPV = 0
 
         #* step parameters
         self.cur_decision ={}
@@ -59,21 +55,22 @@ class trustEnv:
         self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
         self.tempcases = defaultdict(lambda:[0,0,0,0]) #* temporary cases for 100 vehicles. 
         self.ttempcases = defaultdict(lambda:[0,0,0,0]) #* temporary cases for 100 vehicles. 
+
         self.client = None
         self.connect()
 
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['cares_rl_sb']
+        self.accrewcollection = self.db['custom']
 
     def get_car(self):
         
         tv_id = int(self.data['indirect_tv'][self.next_car_index]*100)
         tv_d = int(self.data['direct_tv'][self.next_car_index]*100)
-        tv = (self.beta * tv_id + (1-self.beta) * tv_d) #! if beta close to 1 -> indirect evidence 
-        # print(self.next_car_index, self.dtt, tv_id, tv_d, tv)
 
+        tv = (self.beta * tv_id + (1-self.beta) * tv_d) #! if beta close to 1 -> indirect evidence 
+        
         if tv > self.dtt:
             self.cur_decision[self.next_car_index]=0 #! if benign, it should be over dtt
         else: 
@@ -83,19 +80,20 @@ class trustEnv:
         self.result_values[self.next_car_index][1] = self.dtt # dynamic threshold 값.
         self.cumulative_gt+=tv
 
-    def step3(self, action, car_id): 
-        currentPPV = 0
-        currentNPV = 0
+    def step2(self, action, car_id): 
         #* inputs an action to current state & gets a reward to this action
         reward = 0
-        # print(self.dtt, self.action_space[action]*self.delta)
-        if self.dtt + (self.action_space[action] * self.delta) <100 and self.dtt + (self.action_space[action] * self.delta)>0:
-            self.dtt += (self.action_space[action] * self.delta)
+        currentPPV =0
+        currentNPV=0
+        # print(self.dtt, self.action_space[action])
+        if self.dtt + self.action_space[action] <100 and self.dtt + self.action_space[action]>0:
+            self.dtt += self.action_space[action]
         else :
             pass
         
+        
         ###* Reward주는 방법 
-        ###* 방법1) 여기서 gt_accuracy에서 구한 값의 (TP + TN) / (TP+TN+FP+FN) 로 계산해서 reward값 선정. 
+        ###* 방법1) 현재 accuracy와 이전 accuracy를 비교해서 증가하면+ 감소하면- reward값 선정. 
         
         # temperaryaccuracy = ( self.tempcases['gt'][0] + self.tempcases['gt'][3] ) / ( self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3]) 
         # if temperaryaccuracy > self.previousaccuracy: 
@@ -136,12 +134,8 @@ class trustEnv:
         # else:
         #     reward += self.reward_value*2
 
-        
         # self.ttempcases['gt'] = self.tempcases['gt']
-        #self.tempcases = defaultdict(lambda:[0, 0, 0, 0])   
-
-        # print(self.cumulative_reward)
-        # print(self.next_car_index, reward)
+        # self.tempcases = defaultdict(lambda:[0, 0, 0, 0]) # tempcases를 초기화.  
 
         ###* 방법5) -D PPV, NPV 계산 수식으로 
         PPV_THR, NPV_THR = 0.8, 0.8
@@ -160,7 +154,8 @@ class trustEnv:
             reward -= self.reward_value
         elif(currentPPV < PPV_THR):
             reward -= self.reward_value
-        
+
+
         ###* 방법6) PPV, NPV 매커니즘 그대로 활용해볼 것. 1이되면 가장 accurate하게 걸러내는 것! 0.95이하로 되면 올리기.
         # if (self.cases['gt'][0]+self.cases['gt'][1]) == 0:
         #     currentPPV = 0
@@ -170,18 +165,23 @@ class trustEnv:
         #     currentNPV = 0
         # else:
         #     currentNPV = self.cases['gt'][3] / (self.cases['gt'][3]+self.cases['gt'][2])
-        # print(self.next_car_index, self.dtt, currentPPV, currentNPV)
-        # print(self.cases)
+        # # print(currentPPV, currentNPV)
         # if currentPPV < 0.95:
         #     reward -= self.reward_value
-        # else:
-        #     reward += self.reward_value
+        #     # pass
+        # # else:
+        #     # reward += self.reward_value
         # if currentNPV < 0.95:
-        #     reward -= self.reward_value
+        #     reward -= self.reward_value*2
+            # pass
         # else:
-        #     reward += self.reward_value
-            
+            # reward += self.reward_value
+
+
+        ###* 방법7) PPV, NPV를 이전과 비교해서 증가세인지 감소세인지에 따라서 reward주는 방법? 즉, 0.8같은 수치를 제거하기 위해서...!
+
         self.cumulative_reward[self.next_car_index+100] = reward + self.cumulative_reward[self.next_car_index]
+
         self.cumulative_state += self.dtt
         
         return reward, self.dtt #self.state
@@ -231,7 +231,6 @@ class trustEnv:
         self.average_state[run_counts].append(self.cumulative_state / step)
         self.average_gt[run_counts].append(self.cumulative_gt / step)
         self.cum_reward[run_counts].append(self.cumulative_reward[step] )
-        # print(self.cum_reward)
 
     def save_avg_accuracy(self, run_counts, name): #! iterate and make average of the iterations.
         # print(len(self.accuracy[0]))
@@ -250,6 +249,7 @@ class trustEnv:
                 temp[4]+=self.precision[i][j] 
                 temp[5]+=self.recall[i][j] 
                 temp[6]+=self.f1score[i][j]
+
                 errors.append(self.accuracy[i][j])
             # print(errors)
             final_acc_error.append(statistics.stdev(errors))
@@ -261,17 +261,17 @@ class trustEnv:
             final_precision.append(temp[4]/run_counts)
             final_recall.append(temp[5]/run_counts)
             final_f1.append(temp[6]/run_counts)
-            
-            # print(final_acc_error)
+
         print("Accuracy: ", final_acc[-1])
         print("Precision: ", final_precision[-1])
         print("Recall: ", final_recall[-1])
         print("F1 score: ", final_f1[-1])
+
         row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap, 'v_interval':name.v_interval, "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "accuracy": final_acc, "avg_dtt": final_dtt, "avg_gt": final_gt, "cum_rew": final_rew, 'precision': final_precision, 'f1score': final_f1, 'recall': final_recall,"error":final_acc_error}
         self.accrewcollection.insert_one(row)
 
     def reset(self): #* per iteration reset
-        self.result_values = defaultdict(lambda: [0, 0, 0, 0, 0, 0]) 
+        self.result_values = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
         self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
         self.cur_decision ={}
         self.cumulative_reward = defaultdict(int)
@@ -279,6 +279,8 @@ class trustEnv:
         self.cumulative_gt = 0
         self.next_car_index = 1
         self.dtt = self.originals[0]
+        self.previousFP=0
+        self.previousFN=0
 
     def resetepoch(self): #* per epoch reset
 

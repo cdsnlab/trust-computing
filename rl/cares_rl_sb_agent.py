@@ -46,15 +46,20 @@ class QLearningAgent():
     def print_qtable(self): 
         print(self.q_table)
 
-    def get_action(self, state):
-        if np.random.rand() < self.epsilon:
-            # take random action
-            action = np.random.choice(self.actions)
-        else:
-            # take action according to the q function table
-            state_action = self.q_table[state]
-            action = self.arg_max(state_action)
-        
+    def get_action(self, state, action_list):
+        #* block out unavailable choices.
+        notDone = True
+        while notDone:
+            
+            if np.random.rand() < self.epsilon:
+                # take random action
+                action = np.random.choice(self.actions)
+            else:
+                # take action according to the q function table
+                state_action = self.q_table[state]
+                action = self.arg_max(state_action)
+            if action_list[action] + state < 100 and action_list[action] + state > 0:
+                notDone = False
         return action
 
     @staticmethod
@@ -71,8 +76,7 @@ class QLearningAgent():
         return random.choice(max_index_list)
 
 if __name__ == "__main__":
-
-    for output in named_product(v_d=[3, 5, 7], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50, 90], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
+    for output in named_product(v_d=[1, 3, 5, 7, 9], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[50, 90], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
         # v_mvp=[0.1, 0.2, 0.3], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3],
         #mvp: 0.1, 0.2, 0.3
         #mbp: 0.1, 0.2, 0.3, 0.4, 0.5
@@ -87,8 +91,7 @@ if __name__ == "__main__":
         INTERVAL = output.v_interval
         evaluation_q = queue.Queue(DELAY)
         #env.dtt = output.v_i
-        env.state = None
-        state = env.state
+        state = env.dtt
         run_counts = 10
 
 
@@ -113,7 +116,7 @@ if __name__ == "__main__":
                     # print("step {}".format(env.next_car_index))
                     # print(env.next_car_index)
                     agent.decayed_eps(env.next_car_index, STEPS)
-                    action = agent.get_action(state)                    
+                    action = agent.get_action(state, list(env.action_space))
                     reward, next_state = env.step3(action, env.next_car_index)
 
                     # with sample <s,a,r,s'>, agent learns new q function
@@ -121,13 +124,14 @@ if __name__ == "__main__":
 
                     state = next_state
                 # if env.next_car_index % (100-DELAY) ==0:
-                    env.append_accuracy(i, env.next_car_index-DELAY) #* adds accuracy to the list
+                    # env.append_accuracy(i, env.next_car_index-DELAY) #* adds accuracy to the list
+                    env.append_accuracy(i, env.next_car_index)
                     
                 # this is the end of one simulation
-                if env.next_car_index == (STEPS+DELAY)-1:
+                if env.next_car_index == (STEPS):
                     print("run count: {} finished ".format(i))
                     print("dtt: {}".format(env.dtt))
-                    print("rew: {}".format(env.cumulative_reward))
+                    # print("rew: {}".format(env.cumulative_reward))
                     print("Accuracy: {}".format(env.accuracy[i][-1]))
                     env.reset()
                     agent.q_table = defaultdict(lambda:[0, 0, 0])
