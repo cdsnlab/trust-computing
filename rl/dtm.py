@@ -64,8 +64,8 @@ def evaluate(threshold, interval, data, nci):
         result_values[nci][3]=0
     else:
         result_values[nci][3]= (2*result_values[nci][2]*result_values[nci][0]) / (result_values[nci][2] + result_values[nci][0]) 
-    print(nci, result_values[nci]) 
-    # print(nci, cases)
+    # print(nci, result_values[nci]) 
+    print(nci, cases)
     final['pre'].append(result_values[nci][0])
     final['acc'].append(result_values[nci][1])
     final['rec'].append(result_values[nci][2])
@@ -75,8 +75,8 @@ def evaluate(threshold, interval, data, nci):
     # return result_values
 
 connection = connect()
-for output in named_product(v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
-    threshold=50
+for output in named_product(v_i=[10, 50, 90],v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
+    threshold=output.v_i
 
     filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
     data = pd.read_csv('../sampledata/'+filename, header=0)
@@ -89,13 +89,13 @@ for output in named_product(v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]
             evaluate(threshold, INTERVAL, data, next_car_index)
         if next_car_index == (output.v_s):
             print(final['acc'][-1])
-            row = {"id": str(output), 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'f1score': final['f1']}
-            # connection.insert_one(row)
+            row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'f1score': final['f1'], 'dtt': final['dtt']}
+            connection.insert_one(row)
             # print (row)
             break
 
         next_car_index+=1
     cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
-    result_values = defaultdict(lambda:[0,0,0]) #* precision, accuracy, recall
+    result_values = defaultdict(lambda:[0,0,0, 0]) #* precision, accuracy, recall
 
     final = defaultdict(list)
