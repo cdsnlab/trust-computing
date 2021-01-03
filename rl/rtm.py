@@ -14,7 +14,7 @@ NUM_INTERACTIONS = 600
 NUM_DATA_PER_CONTEXT = 500
 DATA_PER_VEHICLE = 64 * NUM_DATA_PER_CONTEXT
 
-result_values = defaultdict(lambda:[0,0,0]) #* precision, accuracy, recall
+result_values = defaultdict(lambda:[0,0,0,0]) #* precision, accuracy, recall
 cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
 trust_values = []
 statuses = []
@@ -71,11 +71,17 @@ def evaluate(threshold, data, interaction):
         result_values[interaction][2]=100
     else:
         result_values[interaction][2] = (cases["gt"][0])/(cases["gt"][0] + cases["gt"][2]) *100
+    #* f1 
+    if (result_values[interaction][0]+result_values[interaction][2]) ==0:
+        result_values[interaction][3]=0
+    else:
+        result_values[interaction][3]=(2*result_values[interaction][2]*result_values[interaction][0]) / (result_values[interaction][0] + result_values[interaction][2])
     # print(interaction, result_values[interaction]) 
     # print(interaction, cases)
     final['acc'].append(result_values[interaction][0])
     final['pre'].append(result_values[interaction][1])
     final['rec'].append(result_values[interaction][2])
+    final['f1'].append(result_values[interaction][2])
     # return result_values
 
 def get_indirect_trust_values(data):
@@ -85,31 +91,34 @@ def get_indirect_trust_values(data):
         index = DATA_PER_VEHICLE * i + NUM_DATA_PER_CONTEXT
         good_history = data['good_history'][index]
         bad_history = data['bad_history'][index]
-        trust_values[i] = int(good_history / (bad_history + good_history) * 100)
-        statuses[i] = data['status'][index]
+        trust_values.append(int(good_history / (bad_history + good_history) * 100))
+        statuses.append(data['status'][index])
+        # print(trust_values[i])
+        # print(statuses[i])
+    print(trust_values)
+    print(statuses)
 
 
 connection = connect()
-for output in named_product(v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4]):
+for output in named_product(v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.3], interval=[100]):
     threshold=50
 
-    filename = "ce_db_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
-    data = pd.read_csv('../sampledata/'+filename, header=0)
+    filename = "ce_db_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
+    data = pd.read_csv('../sampledata/'+filename, sep=',', error_bad_lines=False, encoding='latin1', header=0)
     interaction=1
-    time.sleep(0.1)
     get_indirect_trust_values(data)
     while True:
         if interaction == NUM_INTERACTIONS:
             row = {"id": str(output), 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap,
-                   "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec']}
+                   "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'f1score':final['f1']}
             connection.insert_one(row)
-            print (row)
+            # print (row)
             break
         evaluate(threshold, data, interaction)
         interaction += 1
 
     cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
-    result_values = defaultdict(lambda:[0,0,0]) #* precision, accuracy, recall
+    result_values = defaultdict(lambda:[0,0,0,0]) #* precision, accuracy, recall
 
     final = defaultdict(list)
 
