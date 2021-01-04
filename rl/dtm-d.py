@@ -17,7 +17,7 @@ def named_product(**items):
 def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
-    accrewcollection = db['dtmd']
+    accrewcollection = db['dtm_d']
     return accrewcollection
 
 def evaluate(threshold, interval, data, nci):
@@ -77,14 +77,14 @@ def evaluate(threshold, interval, data, nci):
 
 
 connection = connect()
-for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
+for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]): 
     threshold=output.v_i
-    PPV_THR = 0.8
-    NPV_THR = 0.8
+    PPV_THR = 0.95
+    NPV_THR = 0.95
 
     filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
     data = pd.read_csv('../sampledata/'+filename, header=0)
-    INTERVAL = output.v_interval
+    INTERVAL = 100
     next_car_index=1
     time.sleep(0.1)
     while True:
@@ -112,19 +112,34 @@ for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mb
             #         threshold=100
 
             #! 방법2: 신기한 PPV, NPV기반 방법 
+            # if (PPV > PPV_THR and NPV > NPV_THR): #* 둘다 1에 가까우면 움직이지마!
+            #     pass
+            # elif(NPV < NPV_THR): #* 둘중 하나를 고쳐야되면 NPV부터 고쳐봐. 
+            #     if threshold + 5 < 100:
+            #         threshold+=5
+            # elif(PPV < PPV_THR):
+            #     if threshold - 5 > 0:
+            #         threshold-=5
+
+            #! 방법3: 완전히 올라가버리는 현상 제거 (꼼수?)
             if (PPV > PPV_THR and NPV > NPV_THR): #* 둘다 1에 가까우면 움직이지마!
                 pass
+            elif(PPV < PPV_THR and NPV < NPV_THR ):
+                if threshold > 50:
+                    threshold-=5
+                else:
+                    threshold+=5
             elif(NPV < NPV_THR): #* 둘중 하나를 고쳐야되면 NPV부터 고쳐봐. 
                 if threshold + 5 < 100:
                     threshold+=5
             elif(PPV < PPV_THR):
                 if threshold - 5 > 0:
                     threshold-=5
-
+        
             print(next_car_index,  threshold, PPV, NPV, final['acc'][-1])
 
         if next_car_index == (output.v_s):
-            row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'dtt': final['dtt'], 'f1score': final['f1']}
+            row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'dtt': final['dtt'], 'f1score': final['f1']}
             connection.insert_one(row)
             print(final['acc'][-1])
             break

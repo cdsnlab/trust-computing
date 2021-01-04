@@ -7,7 +7,7 @@ from collections import defaultdict
 from pymongo import MongoClient
 from itertools import product, starmap
 
-result_values = defaultdict(lambda:[0,0,0]) #* precision, accuracy, recall
+result_values = defaultdict(lambda:[0,0,0,0]) #* precision, accuracy, recall
 cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
 final = defaultdict(list)
 def named_product(**items):
@@ -62,20 +62,26 @@ def evaluate(threshold, interval, data, nci, beta):
         result_values[nci][2]=100
     else:
         result_values[nci][2] = (cases["gt"][0])/(cases["gt"][0] + cases["gt"][2]) *100
+    #* f1 score
+    if result_values[nci][2]+result_values[nci][0] == 0:
+        result_values[nci][3]=0
+    else:
+        result_values[nci][3]= (2*result_values[nci][2]*result_values[nci][0]) / (result_values[nci][2] + result_values[nci][0]) 
     # print(nci, result_values[nci]) 
     # print(nci, cases)
-    final['acc'].append(result_values[nci][0])
-    final['pre'].append(result_values[nci][1])
+    final['acc'].append(result_values[nci][1])
+    final['pre'].append(result_values[nci][0])
     final['rec'].append(result_values[nci][2])
-    # return result_values
+    final['f1'].append(result_values[nci][3])
+    final['dtt'].append(threshold)
 
 connection = connect()
-for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]): 
-    threshold=50
+for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]): 
+    threshold=output.v_i
 
-    filename = "rl_df_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
+    filename = "is_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
     data = pd.read_csv('../sampledata/'+filename, header=0)
-    INTERVAL = output.v_interval
+    INTERVAL = 100
     BETA = 0.5
     next_car_index=1
     time.sleep(0.1)
@@ -84,14 +90,14 @@ for output in named_product(v_s = [11000], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2,
         if next_car_index % INTERVAL ==0:
             evaluate(threshold, INTERVAL, data, next_car_index, BETA)
         if next_car_index == (output.v_s):
-            row = {"id": str(output), 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec']}
-            connection.insert_one(row)
-            print (row)
+            row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'dtt': final['dtt'], 'f1score': final['f1']}
+            # connection.insert_one(row)
+            # print (row)
             break
 
         next_car_index+=1
     cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
-    result_values = defaultdict(lambda:[0,0,0]) #* precision, accuracy, recall
+    result_values = defaultdict(lambda:[0,0,0,0]) #* precision, accuracy, recall
 
     final = defaultdict(list)
 

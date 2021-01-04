@@ -28,7 +28,7 @@ class trustEnv:
         print("[INFO] File loaded")
 
         # self.action_space = ["uu", "ud", "us", "du", "dd", "ds", "su", "sd", "ss"] #* {state, beta} x {up, down, stay}
-        self.action_space = [-1, 0, 1]
+        self.action_space = [-1, 0, 1] * deltavalue
         self.n_actions = len(self.action_space)
         self.delta = deltavalue
         # self.bdelta = bdelta

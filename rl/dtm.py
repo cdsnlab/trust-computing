@@ -75,12 +75,12 @@ def evaluate(threshold, interval, data, nci):
     # return result_values
 
 connection = connect()
-for output in named_product(v_i=[10, 50, 90],v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
+for output in named_product(v_i=[10, 50, 90],v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]): 
     threshold=output.v_i
 
     filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
     data = pd.read_csv('../sampledata/'+filename, header=0)
-    INTERVAL = output.v_interval
+    INTERVAL = 100
     next_car_index=1
     # time.sleep(0.1)
     while True:
@@ -89,7 +89,7 @@ for output in named_product(v_i=[10, 50, 90],v_s = [59999], v_mvp=[0.2], v_mbp=[
             evaluate(threshold, INTERVAL, data, next_car_index)
         if next_car_index == (output.v_s):
             print(final['acc'][-1])
-            row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, 'v_interval':output.v_interval, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'f1score': final['f1'], 'dtt': final['dtt']}
+            row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'f1score': final['f1'], 'dtt': final['dtt']}
             connection.insert_one(row)
             # print (row)
             break
