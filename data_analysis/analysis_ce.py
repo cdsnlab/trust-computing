@@ -17,7 +17,7 @@ b_tv = []
 b_s = []
 m_tv = []
 m_s  = []
-data = pd.read_csv('/home/spencer1/trust-computing/sampledata/ce_db_0_0.5mbp0.2oap0.2mvp.csv', sep=',', error_bad_lines=False, encoding='latin1', header=0, nrows=3200000)
+data = pd.read_csv('/home/spencer/trust-computing/sampledata/ce_db_0_0.5mbp0.2oap0.2mvp.csv', sep=',', error_bad_lines=False, encoding='latin1', header=0, nrows=3200000)
 
 fig = go.FigureWidget(
     layout=go.Layout(title="Trust values plottingfor CE_DB",xaxis=dict(title="Trust value"),yaxis=dict(title="Benign (0) vs Malicious (1)", range=[-0.1, 1.1] ))
@@ -54,24 +54,3 @@ fig.add_trace(go.Scatter(mode='markers', x=b_tv, y=b_s, name="benign", marker=di
         )))
 
 st.plotly_chart(fig, use_container_width=True)
-
-# count=0
-# for i in range (len(trajectories)):
-    
-#     latplots = []
-#     lonplots = []
-
-#     allplots = []
-#     res=json.loads(trajectories[i]) 
-#     print(len(res))
-#     for j in range(len(res)):
-#         allplots.append([res[j][1], res[j][0]])
-#         latplots.append(res[j][1])
-#         lonplots.append(res[j][0])
-#     row = {"index": str(count), "lon": lonplots, "lat": latplots, "both": allplots}
-#     mdb.insert_one(row)
-#     print(row)
-
-#     count+=1
-#     if count > MAXPLOTS: #* so it doesn't break :( 
-#         break
