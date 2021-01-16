@@ -10,8 +10,7 @@ from plotly.subplots import make_subplots
 NUM_VEHICLES = 100
 NUM_INTERACTIONS = 100
 
-
-data = pd.read_csv('/home/spencer/trust-computing/sampledata/is_df_0_0.5mbp0.2oap0.2mvp.csv', sep=',', error_bad_lines=False, encoding='latin1', header=0)
+data = pd.read_csv('/home/spencer/trust-computing/sampledata/is_df_0_0.5mbp0.2oap0.2mvp.csv', sep=',', error_bad_lines=False, header=0)
 # data = pd.read_csv('/home/spencer/trust-computing/is_df_0_0.5mbp0.2oap0.2mvp.csv', sep=',', error_bad_lines=False, encoding='latin1', header=0)
 
 
@@ -28,6 +27,7 @@ for i in range (NUM_INTERACTIONS):
     b_=defaultdict(list)
     for j in range(NUM_VEHICLES):
         index = j+i*NUM_VEHICLES
+        # print(index)
         i_tv = data['indirect_tv'][index] *100
         d_tv = data['direct_tv'][index] *100
         
