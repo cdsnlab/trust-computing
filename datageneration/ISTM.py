@@ -8,6 +8,10 @@ MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.2, 0.3, 0.4, 0.5]
 PROB_ATTACKS = [0.1, 0.15, 0.2, 0.25, 0.3]
 MALICIOUS_VEHICLE_PORTIONS = [0.1, 0.2, 0.3, 0.4]
 
+# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.5]
+# PROB_ATTACKS = [0.1]
+# MALICIOUS_VEHICLE_PORTIONS = [0.2]
+
 #MALICIOUS_BEHAVIOR_PROBABILITIES = [0.5]
 #PROB_ATTACKS = [0.2]
 #MALICIOUS_VEHICLE_PORTIONS = [0.2]
@@ -27,15 +31,6 @@ PPV_THRESHHOLD = 0.9
 NPV_THRESHHOLD = 0.45
 THRESHHOLD_STEP = 0.05
 NUM_SIMULATIONS = 1
-
-CE_MBP_PER_ENV_CONTEXT = []
-RSU_MBP_PER_ENV_CONTEXT = []
-
-MBPs = []
-OAPs = []
-MVPs = []
-I_SHARING_METHOD_ACCURACY_AVERAGE = []
-
 
 class ID:
     def __init__(self, index, mvp):
@@ -189,7 +184,7 @@ def get_indirect_trust_values(ce_db, rsu_db):
         rsu_db[i].indirect_trust_value = get_indirect_trust_value(i, ce_db, rsu_db,)
 
 
-def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num):
+def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num, RSU_MBP_PER_ENV_CONTEXT):
     accuracy_sum = 0
     accuracy_per_iteration = []
 
@@ -328,21 +323,25 @@ def get_env_context_index(weather, visibility, rush_hour, gender, age, passenger
 
 
 def initialize_env_mbp(mbp):
+    CE_MBP_PER_ENV_CONTEXT = []
+    RSU_MBP_PER_ENV_CONTEXT = []
     for i in range(64):
         CE_MBP_PER_ENV_CONTEXT.append(mbp + random.uniform(-0.10, 0.10))
         RSU_MBP_PER_ENV_CONTEXT.append(mbp + random.uniform(-0.10, 0.10))
+    return CE_MBP_PER_ENV_CONTEXT, RSU_MBP_PER_ENV_CONTEXT
 
 
 def simulate_behavior(mbp, oap, mvp, iteration_num):
     # create history database of the CE
     ce_db = initialize_id_database(mvp)
-    initialize_env_mbp(mbp)
+
+    CE_MBP_PER_ENV_CONTEXT, RSU_MBP_PER_ENV_CONTEXT = initialize_env_mbp(mbp)
     current_id_db = deepcopy(ce_db)
-    data_creation(ce_db, 0, NUM_ID, oap)
-    data_creation(current_id_db, NUM_WITH_NO_DIRECT_EVIDENCE, NUM_ID, oap)
+    data_creation(ce_db, 0, NUM_ID, oap, CE_MBP_PER_ENV_CONTEXT)
+    data_creation(current_id_db, NUM_WITH_NO_DIRECT_EVIDENCE, NUM_ID, oap, RSU_MBP_PER_ENV_CONTEXT)
     get_indirect_trust_values(ce_db, current_id_db)
     base_threshhold = 0.5
-    iterate_interactions(current_id_db, base_threshhold, mbp, oap, mvp, iteration_num)
+    iterate_interactions(current_id_db, base_threshhold, mbp, oap, mvp, iteration_num, RSU_MBP_PER_ENV_CONTEXT)
 
 
 def initialize_id_database(mvp):
@@ -352,7 +351,7 @@ def initialize_id_database(mvp):
     return id_db
 
 
-def data_creation(db, start, end, oap):
+def data_creation(db, start, end, oap, env_mbps):
     weather_column = []
     visibility_column = []
     rush_hour_column = []
@@ -372,8 +371,7 @@ def data_creation(db, start, end, oap):
                     for d in range(2):
                         for e in range(2):
                             for f in range(2):
-                                malicious_prob = get_malicious_behavior_probability(used_id, a, b, c, d, e, f,
-                                                                                    CE_MBP_PER_ENV_CONTEXT)
+                                malicious_prob = get_malicious_behavior_probability(used_id, a, b, c, d, e, f, env_mbps)
                                 for g in range(NUM_DATA_PER_CONTEXT):
                                     if random.uniform(0, 1) < malicious_prob:
                                         behavior = MALICIOUS_STATUS

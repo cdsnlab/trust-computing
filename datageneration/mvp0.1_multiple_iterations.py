@@ -5,16 +5,14 @@ import pandas as pd
 import numpy as np
 import os
 import keras
-import cProfile
+
 from keras.models import Sequential
 from keras.layers import Dense
 
 from keras.optimizers import Adam
 
-# MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.2, 0.3, 0.4, 0.5]
-MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1]
-PROB_ATTACKS = [0.1]
-# PROB_ATTACKS = [0.1, 0.15, 0.2, 0.25, 0.3]
+MALICIOUS_BEHAVIOR_PROBABILITIES = [0.1, 0.2, 0.3, 0.4, 0.5]
+PROB_ATTACKS = [0.1, 0.15, 0.2, 0.25, 0.3]
 MALICIOUS_VEHICLE_PORTIONS = [0.1]
 
 warmup_iterations = 5
@@ -26,21 +24,12 @@ NUM_DE = 20000
 NUM_WITH_NO_DIRECT_EVIDENCE = 100
 NUM_DATA_PER_CONTEXT = 500
 NUM_OPTIMAL_FRIENDS = 7
-NUM_INTERACTION_BEHAVIOR = 600 #* each vehicle interacts 600 times per scenario.
+NUM_INTERACTION_BEHAVIOR = 600
 DIRECT_EVIDENCE_WEIGHT = 0.5
 PPV_THRESHHOLD = 0.95
 NPV_THRESHHOLD = 0.95
-THRESHHOLD_STEP = 0.05 #* dynamic threshold.
-NUM_SIMULATIONS = 1
-
-CE_MBP_PER_ENV_CONTEXT = []
-RSU_MBP_PER_ENV_CONTEXT = []
-
-MBPs = []
-OAPs = []
-MVPs = []
-I_SHARING_METHOD_ACCURACY_AVERAGE = []
-
+THRESHHOLD_STEP = 0.05
+NUM_SIMULATIONS = 100
 
 class ID:
     def __init__(self, index, mvp):
@@ -121,7 +110,7 @@ def get_base_threshhold(current_id_db, weather, visibility, rush_hour, gender, a
     return tv_sum / same_context_count
 
 
-def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num, model):
+def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num, model, RSU_MBP_PER_ENV_CONTEXT):
     accuracy_sum = 0
     accuracy_per_iteration = []
 
@@ -173,7 +162,6 @@ def iterate_interactions(current_id_db, threshhold, mbp, oap, mvp, iteration_num
             else:
                 interaction_id.history_good[weather][visibility][rush_hour][gender][age][passenger] += 1
 
-            #* can remove this for generating CARES data
             weather_column.append(weather)
             visibility_column.append(visibility)
             rush_hour_column.append(rush_hour)
@@ -320,9 +308,13 @@ def get_env_context_index(weather, visibility, rush_hour, gender, age, passenger
 
 
 def initialize_env_mbp(mbp):
+    CE_MBP_PER_ENV_CONTEXT = []
+    RSU_MBP_PER_ENV_CONTEXT = []
     for i in range(64):
         CE_MBP_PER_ENV_CONTEXT.append(mbp + random.uniform(-0.10, 0.10))
         RSU_MBP_PER_ENV_CONTEXT.append(mbp + random.uniform(-0.10, 0.10))
+
+    return CE_MBP_PER_ENV_CONTEXT, RSU_MBP_PER_ENV_CONTEXT
 
 
 def fine_tuning(model, current_id_df):
@@ -335,17 +327,17 @@ def fine_tuning(model, current_id_df):
 def simulate_behavior(mbp, oap, mvp, iteration_num):
     # create history database of the CE
     ce_db = initialize_id_database(mvp)
-    initialize_env_mbp(mbp)
+    CE_MBP_PER_ENV_CONTEXT, RSU_MBP_PER_ENV_CONTEXT = initialize_env_mbp(mbp)
     current_id_db = deepcopy(ce_db)
-    ce_df = data_creation(ce_db, 0, NUM_ID, oap)
+    ce_df = data_creation(ce_db, 0, NUM_ID, oap, CE_MBP_PER_ENV_CONTEXT)
     ce_df.to_csv('ce_db_' + str(iteration_num) + '_' + str(mbp) + 'mbp' + str(oap) + 'oap' + str(mvp) + 'mvp.csv',
               index=False)
-    rsu_df = data_creation(current_id_db, NUM_WITH_NO_DIRECT_EVIDENCE, NUM_ID, oap)
+    rsu_df = data_creation(current_id_db, NUM_WITH_NO_DIRECT_EVIDENCE, NUM_ID, oap, RSU_MBP_PER_ENV_CONTEXT)
 
     model = get_trained_model(mbp, oap, mvp, iteration_num)
     base_threshhold = 0.5
     fine_tuning(model, rsu_df)
-    iterate_interactions(current_id_db, base_threshhold, mbp, oap, mvp, iteration_num, model)
+    iterate_interactions(current_id_db, base_threshhold, mbp, oap, mvp, iteration_num, model, RSU_MBP_PER_ENV_CONTEXT)
 
 
 def initialize_id_database(mvp):
@@ -355,7 +347,7 @@ def initialize_id_database(mvp):
     return id_db
 
 
-def data_creation(db, start, end, oap):
+def data_creation(db, start, end, oap, mbp_per_env_context):
     weather_column = []
     visibility_column = []
     rush_hour_column = []
@@ -376,7 +368,7 @@ def data_creation(db, start, end, oap):
                         for e in range(2):
                             for f in range(2):
                                 malicious_prob = get_malicious_behavior_probability(used_id, a, b, c, d, e, f,
-                                                                                    CE_MBP_PER_ENV_CONTEXT)
+                                                                                    mbp_per_env_context)
                                 for g in range(NUM_DATA_PER_CONTEXT):
                                     if random.uniform(0, 1) < malicious_prob:
                                         behavior = MALICIOUS_STATUS
@@ -442,8 +434,7 @@ if __name__ == '__main__':
                     print("simulating behavior for mbp: ", malicious_behavior_probability,
                           "oap: ", outside_attack_probability,
                           "mvp: ", malicious_vehicle_portion)
-                    cProfile.run(simulate_behavior(malicious_behavior_probability, outside_attack_probability, malicious_vehicle_portion, iteration))
-                    # simulate_behavior(malicious_behavior_probability,
-                    #                   outside_attack_probability,
-                    #                   malicious_vehicle_portion,
-                    #                   iteration)
+                    simulate_behavior(malicious_behavior_probability,
+                                      outside_attack_probability,
+                                      malicious_vehicle_portion,
+                                      iteration)
