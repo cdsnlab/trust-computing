@@ -18,19 +18,20 @@ MVP_LIST=[0.1, 0.2, 0.3, 0.4]
 # data = pd.read_csv('/home/spencer/trust-computing/is_df_0_0.5mbp0.2oap0.2mvp.csv', sep=',', error_bad_lines=False, encoding='latin1', header=0)
 # print(set(zip(MBP_LIST, OAP_LIST, MVP_LIST)))
 
-list_3 = [ str(x) +"_"+ str(y) +"_"+ str(z) for x in MBP_LIST for y in OAP_LIST for z in MVP_LIST]
-print(list_3)
+list_3 = [ "MBP"+str(x) +"OAP"+ str(y) +"MVP"+ str(z) for x in MBP_LIST for y in OAP_LIST for z in MVP_LIST]
+# print(list_3)
 
 fig = make_subplots(
-    cols=len(MVP_LIST)*len(MBP_LIST)*len(OAP_LIST),
-    rows=NUM_INTERACTIONS+1,
+    cols=len(MVP_LIST),
+    rows=len(MBP_LIST)*len(OAP_LIST),
     subplot_titles=(list_3)
 )
-fig.update_layout(height=NUM_INTERACTIONS*500, width=len(MVP_LIST)*len(MBP_LIST)*len(OAP_LIST)*200, title_text="CARES dataset (split by NUM_ITERACTION)")
+fig.update_layout(height=len(MBP_LIST)*len(OAP_LIST)*500, width=len(MVP_LIST)*600, title_text="CARES dataset (split by NUM_ITERACTION)")
 
-count=1
+rowcount=0
 for a in (MBP_LIST):
     for b in (OAP_LIST):
+        count=1
         for c in (MVP_LIST):
             data = pd.read_csv('/home/spencer/trust-computing/sampledata/cares_df_0_{}mbp{}oap{}mvp.csv'.format(a,b,c), sep=',', error_bad_lines=False, encoding='latin1', header=0)
 
@@ -38,7 +39,7 @@ for a in (MBP_LIST):
                 m_=defaultdict(list)
                 b_=defaultdict(list)
                 for j in range(NUM_VEHICLES):
-                    index = j+i*NUM_VEHICLES+100
+                    index = j+i*NUM_VEHICLES+10000
                     i_tv = data['indirect_tv'][index] *100
                     d_tv = data['direct_tv'][index] *100
                     
@@ -58,7 +59,7 @@ for a in (MBP_LIST):
                         size=5,
                         ),showlegend=False),
                         col=count,
-                        row=i+1,
+                        row=rowcount+1,
                 )
 
                 fig.add_trace(go.Scatter(mode='markers', x=b_['itv'], y=b_['dtv'], name="benign", marker=dict(
@@ -67,8 +68,9 @@ for a in (MBP_LIST):
                         symbol='x',
                         ),showlegend=False),
                         col=count,
-                        row=i+1,
+                        row=rowcount+1,
                 )
             count+=1
+        rowcount+=1
 
 st.plotly_chart(fig, use_container_width=False)
