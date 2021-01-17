@@ -17,7 +17,7 @@ def named_product(**items):
 def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
-    accrewcollection = db['istm']
+    accrewcollection = db['istm95']
     return accrewcollection
 
 def evaluate(threshold, interval, data, nci, beta):
@@ -76,7 +76,7 @@ def evaluate(threshold, interval, data, nci, beta):
     final['dtt'].append(threshold)
 
 connection = connect()
-for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]): 
+for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]): 
     threshold=output.v_i
 
     filename = "is_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
@@ -84,21 +84,20 @@ for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mb
     INTERVAL = 100
     BETA = 0.5
     next_car_index=1
-    time.sleep(0.1)
+    # time.sleep(0.1)
     while True:
 
         if next_car_index % INTERVAL ==0:
             evaluate(threshold, INTERVAL, data, next_car_index, BETA)
         if next_car_index == (output.v_s):
             row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'dtt': final['dtt'], 'f1score': final['f1']}
-            # connection.insert_one(row)
+            connection.insert_one(row)
             # print (row)
             break
 
         next_car_index+=1
     cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
     result_values = defaultdict(lambda:[0,0,0,0]) #* precision, accuracy, recall
-
     final = defaultdict(list)
 
 

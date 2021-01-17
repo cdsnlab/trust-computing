@@ -29,7 +29,7 @@ def named_product(**items):
 def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
-    accrewcollection = db['rtm']
+    accrewcollection = db['rtm95']
     return accrewcollection
 
 
@@ -100,7 +100,9 @@ def get_indirect_trust_values(data):
 
 
 connection = connect()
-for output in named_product(v_i=[10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]):
+for output in named_product(v_i=[10, 50, 90], v_s = [59999], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]):
+# for output in named_product(v_i=[10,50,90],v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]):
+
     threshold=output.v_i
 
     filename = "ce_db_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"

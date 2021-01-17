@@ -17,12 +17,13 @@ def named_product(**items):
 def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
-    accrewcollection = db['istm_d']
+    accrewcollection = db['istm_d95']
     return accrewcollection
 
 def evaluate(threshold, interval, data, nci, beta):
     decision = {}
-    
+    cases['recent'] = [0,0,0,0]
+
     for i in range(interval):
         # print(nci-i)
 
@@ -35,16 +36,20 @@ def evaluate(threshold, interval, data, nci, beta):
         else:
             decision[nci-i]=1
         # print(nci-i, decision[nci-i], int(data['status'][nci-i]))
-
         #* verify if its validity
-        if decision[nci-i] == 1 and int(data['status'][nci-i]==1): #* TP
+        if decision[nci-i] == 1 and int(data['status'][nci-i]==1): #* TP: malicious!
             cases['gt'][0]+=1
-        elif decision[nci-i] == 1 and int(data['status'][nci-i]==0): #* FP
+            cases['recent'][0]+=1
+
+        elif decision[nci-i] == 1 and int(data['status'][nci-i]==0): #* FP: thought malicious but not!
             cases['gt'][1]+=1
-        elif decision[nci-i] == 0 and int(data['status'][nci-i]==1): #* FN
+            cases['recent'][1]+=1
+        elif decision[nci-i] == 0 and int(data['status'][nci-i]==1):
             cases['gt'][2]+=1
-        else: #* TN
+            cases['recent'][2]+=1
+        else:
             cases['gt'][3]+=1
+            cases['recent'][3]+=1
     # print(cases)
     #* calucalte precision, accuracy, recall
     #* precision
@@ -77,63 +82,66 @@ def evaluate(threshold, interval, data, nci, beta):
     # return result_values
 
 connection = connect()
-for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]): 
+for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]): 
+# for output in named_product(v_i = [10, 50, 90], v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]): 
     threshold=output.v_i
+
     PPV_THR = 0.95
     NPV_THR = 0.95
+    hitmax=False
+    hitmin=False
+
     filename = "is_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
     data = pd.read_csv('../sampledata/'+filename, header=0)
     INTERVAL = 100
     BETA = 0.5
     next_car_index=1
-    time.sleep(0.1)
+    # time.sleep(0.1)
     while True:
 
         if next_car_index % INTERVAL ==0:
             evaluate(threshold, INTERVAL, data, next_car_index, BETA)
 
-            if (cases['gt'][0] + cases['gt'][1]) == 0:
-                PPV = 0
+            if (cases['recent'][0] + cases['recent'][1]) ==0:
+                PPV=0
             else:
-                PPV = cases['gt'][0] / (cases['gt'][0] + cases['gt'][1])
-            if (cases['gt'][3] + cases['gt'][2]) == 0:
-                NPV = 0
+                PPV = cases['recent'][0] / (cases['recent'][0] + cases['recent'][1])
+            if (cases['recent'][3] + cases['recent'][2])==0:
+                NPV =0
             else:
-                NPV = cases['gt'][3] / (cases['gt'][3] + cases['gt'][2])
-
-        # if next_car_index % 200 == 0:
-            # PPV = cases['gt'][0] / (cases['gt'][0] + cases['gt'][1])
-            # if PPV < 0.95:
-            #     threshold-=5
-            #     if threshold <0:
-            #         threshold=0
-            # NPV = cases['gt'][3] / (cases['gt'][3] + cases['gt'][2])
-            # if NPV < 0.95:
-            #     threshold+=5
-            #     if threshold>100:
-            #         threshold=100
-            # print(next_car_index,  threshold, PPV, NPV)
+                NPV = cases['recent'][3] / (cases['recent'][3] + cases['recent'][2])
 
             if (PPV > PPV_THR and NPV > NPV_THR): #* 둘다 1에 가까우면 움직이지마!
                 pass
-            # elif(PPV < PPV_THR and NPV < NPV_THR ): 
-            #     if threshold > 70:
-            #         threshold-=5
-            #     else:
-            #         threshold+=5
+            elif hitmax or hitmin: #* max, min 찍으면 반대방향으로 이동해.
+                if hitmax:
+                    if threshold - 5 > 0:
+                        threshold-=5
+                if hitmin:
+                    if threshold + 5 < 100:
+                        threshold+=5
+            
             elif(NPV < NPV_THR): #* 둘중 하나를 고쳐야되면 NPV부터 고쳐봐. 
                 if threshold + 5 < 100:
                     threshold+=5
+                    
             elif(PPV < PPV_THR):
                 if threshold - 5 > 0:
                     threshold-=5
-            print(next_car_index,  threshold, PPV, NPV, final['acc'][-1])
+
+            if threshold == 95:
+                hitmax=True
+                hitmin=False
+            if threshold == 5:
+                hitmin=True
+                hitmax=False
+
+            # print(next_car_index,  threshold, PPV, NPV, final['acc'][-1])
 
 
         if next_car_index == (output.v_s):
             row = {"id": str(output), 'v_i': output.v_i, 'v_mvp': output.v_mvp, 'v_mbp': output.v_mbp, 'v_oap': output.v_oap, "v_s": output.v_s, "accuracy": final['acc'], 'precision': final['pre'], 'recall': final['rec'], 'dtt': final['dtt'], 'f1score': final['f1']}
-            # connection.insert_one(row)
-            # print(final['acc'][-1])
+            connection.insert_one(row)
             # print(row)
             break
 
