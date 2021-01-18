@@ -18,10 +18,10 @@ def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
 
-    dtmdcoll = db['dtm_d']
-    dtmcoll = db['dtm']
+    rtmdcoll = db['rtm_d']
+    rtmcoll = db['rtm']
 
-    return dtmdcoll, dtmcoll
+    return rtmdcoll, rtmcoll
 
 def named_product(**items):
     Product = namedtuple('Product', items.keys())
@@ -43,9 +43,9 @@ def getxvalue(key): #parse for v_s
             
     
 data_load_state = st.text('Loading data...')
-dtmdcoll, dtmcoll = connect()
+rtmdcoll, rtmcoll = connect()
 data_load_state.text('Loading data...done!')
-st.title("DTM / DTM-D")
+st.title("RTM / RTM-D")
 #reconstruct multiselect options, match it with 
 s =   st.multiselect("Total number of steps", [59999], default=[59999])
 i =   st.multiselect("Initial starting value", [10, 50, 90], default=[50])
@@ -56,7 +56,7 @@ oap =   st.multiselect("Outside attack probability", [0.1, 0.15, 0.2, 0.25, 0.3]
 rwcombo = reconstruct_rtm(i, s, mvp, mbp, oap)
 
 # allcombination.append(rwcombo)
-# dtmcombo = reconstruct_dtm()
+# rtmcombo = reconstruct_rtm()
 fig_accuracy = go.FigureWidget(
     layout=go.Layout(title="Accuracy",xaxis=dict(title="Time (s)"),yaxis=dict(title="Accuracy (%)", range=[0, 100], tickvals=list(range(0,100,10))))
     )
@@ -78,38 +78,39 @@ for j in rwcombo:
     xvalue = getxvalue(j)
 
     myquery = {'id': str(j)}
-    mydoc_dtm = list(dtmcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1,  'dtt':1}))
-    mydoc_dtmd = list(dtmdcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1,  'dtt':1}))
-
+    mydoc_rtm = list(rtmcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1, 'v_interval':1, 'dtt':1}))
+    mydoc_rtmd = list(rtmdcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1, 'v_interval':1, 'dtt':1}))
+    # print(mydoc_rtm)
+    # print(mydoc_rtmd)
     x = np.arange(int(xvalue)/100)
 
-    dtm_accuracy = mydoc_dtm[0]['accuracy']
-    dtm_precision = mydoc_dtm[0]['precision']
-    dtm_recall = mydoc_dtm[0]['recall']   
-    dtm_f1= mydoc_dtm[0]['f1score']
-    dtm_dtt = mydoc_dtm[0]['dtt']
+    rtm_accuracy = mydoc_rtm[0]['accuracy']
+    rtm_precision = mydoc_rtm[0]['precision']
+    rtm_recall = mydoc_rtm[0]['recall']   
+    rtm_f1= mydoc_rtm[0]['f1score']
+    rtm_dtt = mydoc_rtm[0]['dtt']
 
-    dtmd_accuracy = mydoc_dtmd[0]['accuracy']
-    dtmd_precision = mydoc_dtmd[0]['precision']
-    dtmd_recall = mydoc_dtmd[0]['recall']
-    dtmd_f1 = mydoc_dtmd[0]['f1score']
-    dtmd_dtt = mydoc_dtmd[0]['dtt']
+    rtmd_accuracy = mydoc_rtmd[0]['accuracy']
+    rtmd_precision = mydoc_rtmd[0]['precision']
+    rtmd_recall = mydoc_rtmd[0]['recall']
+    rtmd_f1 = mydoc_rtmd[0]['f1score']
+    rtmd_dtt = mydoc_rtmd[0]['dtt']
 
 
-    fig_accuracy.add_trace(go.Scatter(x=x, y=dtm_accuracy, name='DTM'))
-    fig_accuracy.add_trace(go.Scatter(x=x, y=dtmd_accuracy, name='DTMD'))
+    fig_accuracy.add_trace(go.Scatter(x=x, y=rtm_accuracy, name='RTM'))
+    fig_accuracy.add_trace(go.Scatter(x=x, y=rtmd_accuracy, name='RTMD'))
 
-    fig_precision.add_trace(go.Scatter(x=x, y=dtm_precision, name='DTM'))
-    fig_precision.add_trace(go.Scatter(x=x, y=dtmd_precision, name='DTMD'))
+    fig_precision.add_trace(go.Scatter(x=x, y=rtm_precision, name='RTM'))
+    fig_precision.add_trace(go.Scatter(x=x, y=rtmd_precision, name='RTMD'))
 
-    fig_recall.add_trace(go.Scatter(x=x, y=dtm_recall, name='DTM'))
-    fig_recall.add_trace(go.Scatter(x=x, y=dtmd_recall, name='DTMD'))
+    fig_recall.add_trace(go.Scatter(x=x, y=rtm_recall, name='RTM'))
+    fig_recall.add_trace(go.Scatter(x=x, y=rtmd_recall, name='RTMD'))
 
-    fig_f1.add_trace(go.Scatter(x=x, y=dtm_f1, name="DTM"))
-    fig_f1.add_trace(go.Scatter(x=x, y=dtmd_f1, name="DTMD"))
+    fig_f1.add_trace(go.Scatter(x=x, y=rtm_f1, name="RTM"))
+    fig_f1.add_trace(go.Scatter(x=x, y=rtmd_f1, name="RTMD"))
 
-    fig_dtt.add_trace(go.Scatter(x=x, y=dtm_dtt, name="DTM"))
-    fig_dtt.add_trace(go.Scatter(x=x, y=dtmd_dtt, name="DTMD"))
+    fig_dtt.add_trace(go.Scatter(x=x, y=rtm_dtt, name="RTM"))
+    fig_dtt.add_trace(go.Scatter(x=x, y=rtmd_dtt, name="RTMD"))
 
 st.plotly_chart(fig_accuracy, use_container_width=True)
 st.plotly_chart(fig_precision, use_container_width=True)

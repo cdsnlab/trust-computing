@@ -1,6 +1,6 @@
 #* general
 '''
-need to fix q_table defaultdict to be large enought :S
+only rewards at 100 vehicles..............?
 '''
 import numpy as np
 import time
@@ -10,7 +10,7 @@ import queue
 from itertools import product, starmap
 from collections import namedtuple
 #* for RL 
-from cares_rl_bl_custom_actions_env import trustEnv
+from cares_rl_bl_env import trustEnv
 
 import faulthandler
 faulthandler.enable()
@@ -48,7 +48,7 @@ class QLearningAgent():
 
     def get_action(self, state, action_list):
         #* split state into (textbeta, dtt)
-        print(state)
+        # print(state)
         original_beta = int(float(state[0]))
         original_dtt = int(float(state[1]))
         #* block out unavailable choices.
@@ -86,24 +86,22 @@ class QLearningAgent():
         return random.choice(max_index_list)
 
 if __name__ == "__main__":
-    for output in named_product(v_d=[1], v_bd=[10, 50, 90], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2], v_interval=[100]): 
+    for output in named_product(v_d=[1,5,9], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[59999], v_i=[10,50, 90], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]):
+    # for output in named_product(v_d=[1, 5, 9], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50, 90], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]): 
 
     # for output in named_product(v_d=[3], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_interval=[100]):
     # for output in named_product(v_d=[1], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
         filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
-        env = trustEnv(output.v_i, output.v_d, 1, output.v_bd, filename)
+        env = trustEnv(output.v_i, output.v_d, 1, output.v_i, filename)
         agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
         
         DELAY = output.v_fd
         STEPS = output.v_s
-        INTERVAL = output.v_interval
+        INTERVAL = 100
         evaluation_q = queue.Queue(DELAY)
-        #env.dtt = output.v_i
-        # env.state = None
+
         state = (env.beta, env.dtt)
         run_counts = 10
-
-        # time.sleep(0.1)
 
         for i in range(run_counts): #* RUN THIS xxx times each and make an average.
 
@@ -123,14 +121,13 @@ if __name__ == "__main__":
                 
                 if env.next_car_index % INTERVAL == 0: #! 무조건 100일때마다 action 취하고, reward 받는걸로
                     # print("step {}".format(env.next_car_index))
-                    agent.decayed_eps(env.next_car_index, STEPS)
+                    # agent.decayed_eps(env.next_car_index, STEPS)
 
                     # print(env.next_car_index)
-                    action = agent.get_action(state, list(env.action_space))      
+                    action = agent.get_action(state, list(env.action_space) )        
                     reward, next_state = env.step2(action, env.next_car_index)
                     # with sample <s,a,r,s'>, agent learns new q function
                     agent.learn(state, action, reward, next_state)
-
                     state = next_state
                 # if env.next_car_index % (100-DELAY) ==0:
                     env.append_accuracy(i, env.next_car_index) #* adds accuracy to the list
@@ -143,8 +140,9 @@ if __name__ == "__main__":
                     print("Accuracy: {}".format(env.accuracy[i][-1]))
                     print("prec: {}".format(env.precision[i][-1]))
                     print("Rec: {}".format(env.recall[i][-1]))
+
                     env.reset()
-                    agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0]) #! need to fix this to become 49.... hmm
+                    agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
                     # print("[INFO] Finished {}th ".format(i))
                     break
                 env.next_car_index+=1

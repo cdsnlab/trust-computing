@@ -106,7 +106,7 @@ def get_indirect_trust_values(data):
 
 connection = connect()
 for output in named_product(v_i=[10, 50, 90],v_s = [59999], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]): 
-# for output in named_product(v_i=[10,50,90],v_s = [59999], v_mvp=[0.1], v_mbp=[0.1], v_oap=[0.1]):
+# for output in named_product(v_i=[10,50,90],v_s = [59999], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]):
     threshold=output.v_i
 #
     PPV_THR = 0.95

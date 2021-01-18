@@ -18,8 +18,8 @@ def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
 
-    dtmdcoll = db['rtm_d']
-    dtmcoll = db['rtm']
+    dtmdcoll = db['dtm_d']
+    dtmcoll = db['dtm']
 
     return dtmdcoll, dtmcoll
 
@@ -45,10 +45,10 @@ def getxvalue(key): #parse for v_s
 data_load_state = st.text('Loading data...')
 dtmdcoll, dtmcoll = connect()
 data_load_state.text('Loading data...done!')
-st.title("RTM / RTM-D")
+st.title("DTM / DTM-D")
 #reconstruct multiselect options, match it with 
 s =   st.multiselect("Total number of steps", [59999], default=[59999])
-i =   st.multiselect("Initial starting value", [10, 50, 90], default=[50])
+i =   st.multiselect("Initial starting value", [10, 50, 90], default=[90])
 mvp =   st.multiselect("Malicious vehicle probability", [0.1, 0.2, 0.3, 0.4], default=[0.2])
 mbp =   st.multiselect("Malicious Behavior probability", [0.1, 0.2, 0.3, 0.4, 0.5], default=[0.5])
 oap =   st.multiselect("Outside attack probability", [0.1, 0.15, 0.2, 0.25, 0.3], default=[0.2])
@@ -78,10 +78,9 @@ for j in rwcombo:
     xvalue = getxvalue(j)
 
     myquery = {'id': str(j)}
-    mydoc_dtm = list(dtmcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1, 'v_interval':1, 'dtt':1}))
-    mydoc_dtmd = list(dtmdcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1, 'v_interval':1, 'dtt':1}))
-    # print(mydoc_dtm)
-    # print(mydoc_dtmd)
+    mydoc_dtm = list(dtmcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1,  'dtt':1}))
+    mydoc_dtmd = list(dtmdcoll.find(myquery, {'_id':0, 'accuracy':1, 'precision':1, 'recall':1, 'f1score':1,  'dtt':1}))
+
     x = np.arange(int(xvalue)/100)
 
     dtm_accuracy = mydoc_dtm[0]['accuracy']
@@ -97,20 +96,20 @@ for j in rwcombo:
     dtmd_dtt = mydoc_dtmd[0]['dtt']
 
 
-    fig_accuracy.add_trace(go.Scatter(x=x, y=dtm_accuracy, name='RTM'))
-    fig_accuracy.add_trace(go.Scatter(x=x, y=dtmd_accuracy, name='RTMD'))
+    fig_accuracy.add_trace(go.Scatter(x=x, y=dtm_accuracy, name='DTM'))
+    fig_accuracy.add_trace(go.Scatter(x=x, y=dtmd_accuracy, name='DTMD'))
 
-    fig_precision.add_trace(go.Scatter(x=x, y=dtm_precision, name='RTM'))
-    fig_precision.add_trace(go.Scatter(x=x, y=dtmd_precision, name='RTMD'))
+    fig_precision.add_trace(go.Scatter(x=x, y=dtm_precision, name='DTM'))
+    fig_precision.add_trace(go.Scatter(x=x, y=dtmd_precision, name='DTMD'))
 
-    fig_recall.add_trace(go.Scatter(x=x, y=dtm_recall, name='RTM'))
-    fig_recall.add_trace(go.Scatter(x=x, y=dtmd_recall, name='RTMD'))
+    fig_recall.add_trace(go.Scatter(x=x, y=dtm_recall, name='DTM'))
+    fig_recall.add_trace(go.Scatter(x=x, y=dtmd_recall, name='DTMD'))
 
-    fig_f1.add_trace(go.Scatter(x=x, y=dtm_f1, name="RTM"))
-    fig_f1.add_trace(go.Scatter(x=x, y=dtmd_f1, name="RTMD"))
+    fig_f1.add_trace(go.Scatter(x=x, y=dtm_f1, name="DTM"))
+    fig_f1.add_trace(go.Scatter(x=x, y=dtmd_f1, name="DTMD"))
 
-    fig_dtt.add_trace(go.Scatter(x=x, y=dtm_dtt, name="RTM"))
-    fig_dtt.add_trace(go.Scatter(x=x, y=dtmd_dtt, name="RTMD"))
+    fig_dtt.add_trace(go.Scatter(x=x, y=dtm_dtt, name="DTM"))
+    fig_dtt.add_trace(go.Scatter(x=x, y=dtmd_dtt, name="DTMD"))
 
 st.plotly_chart(fig_accuracy, use_container_width=True)
 st.plotly_chart(fig_precision, use_container_width=True)
