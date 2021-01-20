@@ -17,7 +17,7 @@ b_tv = []
 b_s = []
 m_tv = []
 m_s  = []
-data = pd.read_csv('/home/spencer/trust-computing/sampledata/ce_db_0_0.5mbp0.2oap0.2mvp.csv', sep=',', error_bad_lines=False, encoding='latin1', header=0, nrows=3200000)
+data = pd.read_csv('/home/spencer/trust-computing/sampledata/ce_db_0_0.5mbp0.1oap0.2mvp.csv', sep=',', error_bad_lines=False, encoding='latin1', header=0, nrows=3200000)
 
 fig = go.FigureWidget(
     layout=go.Layout(title="Trust values plottingfor CE_DB",xaxis=dict(title="Trust value"),yaxis=dict(title="Benign (0) vs Malicious (1)", range=[-0.1, 1.1] ))
