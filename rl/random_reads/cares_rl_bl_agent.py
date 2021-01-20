@@ -1,7 +1,5 @@
 #* general
-'''
-only rewards at 100 vehicles..............?
-'''
+import random
 import numpy as np
 import time
 from collections import defaultdict
@@ -85,70 +83,63 @@ class QLearningAgent():
                 max_index_list.append(index)
         return random.choice(max_index_list)
 
+    def get_sample(self, max_value):
+        sample_index = random.sample(range(max_value), 100)
+        return sample_index
+        
 if __name__ == "__main__":
-    for output in named_product(v_d=[1,5,9], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[59999], v_i=[10,50, 90], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2]):
-    # for output in named_product(v_d=[1, 5, 9], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50, 90], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]): 
+    # for output in named_product(v_d=[5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10,50, 90], v_mvp=[0.3], v_mbp=[0.5], v_oap=[0.2]):
+    for output in named_product(v_d=[1, 5, 9], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50, 90], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]): 
 
     # for output in named_product(v_d=[3], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_interval=[100]):
     # for output in named_product(v_d=[1], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
+        # print(output.v_i/100)
+        # time.sleep(1)
         filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
         env = trustEnv(output.v_i, output.v_d, 1, output.v_i, filename)
         agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
         
         DELAY = output.v_fd
         STEPS = output.v_s
-        INTERVAL = 100
         evaluation_q = queue.Queue(DELAY)
 
         state = (env.beta, env.dtt)
-        run_counts = 10
+        run_counts = 20
 
-        for i in range(run_counts): #* RUN THIS xxx times each and make an average.
+        for i in range(run_counts): 
+            interaction_number=1
 
-            while True: 
+            while True:
+                samplelist = agent.get_sample(STEPS)
                 
-                if env.next_car_index <= STEPS: 
-                    # print("inq {}".format(env.next_car_index))
-                    #car_id = env.next_car_index
-                    evaluation_q.put(env.next_car_index)
-                    env.get_car()
-
-                if env.next_car_index >= DELAY : #! delay 이후에 실제 event에 대한 verification을 함.
-                    # print("eval {}".format(env.next_car_index))
-                    car_id=evaluation_q.get()
-                    # take action and proceed one step in the environment
-                    env.gt_evaluate(car_id) #! 정확도 기록.
+                env.make_decision(samplelist)
                 
-                if env.next_car_index % INTERVAL == 0: #! 무조건 100일때마다 action 취하고, reward 받는걸로
-                    # print("step {}".format(env.next_car_index))
-                    # agent.decayed_eps(env.next_car_index, STEPS)
+                env.evaluate(interaction_number, samplelist)
+                
+                agent.decayed_eps(interaction_number, STEPS)
 
-                    # print(env.next_car_index)
-                    action = agent.get_action(state, list(env.action_space) )        
-                    reward, next_state = env.step2(action, env.next_car_index)
-                    # with sample <s,a,r,s'>, agent learns new q function
-                    agent.learn(state, action, reward, next_state)
-                    state = next_state
-                # if env.next_car_index % (100-DELAY) ==0:
-                    env.append_accuracy(i, env.next_car_index) #* adds accuracy to the list
-                    
+                action = agent.get_action(state, list(env.action_space))
+                reward, next_state = env.step(action)
+                agent.learn(state, action, reward, next_state)
+                state = next_state
+                env.step_records(i, interaction_number)
+
+
                 # this is the end of one simulation
-                if env.next_car_index == (STEPS):
+                if interaction_number == (STEPS+1)/100:
                     print("run count: {} finished ".format(i))
                     print("dtt {}".format(env.dtt))
                     print("beta {}".format(env.beta))
                     print("Accuracy: {}".format(env.accuracy[i][-1]))
                     print("prec: {}".format(env.precision[i][-1]))
                     print("Rec: {}".format(env.recall[i][-1]))
-
                     env.reset()
                     agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
                     # print("[INFO] Finished {}th ".format(i))
                     break
-                env.next_car_index+=1
-            # agent.print_qtable()
-        #* this is the end of run_counts, you average everything and save it.
+                interaction_number+=1
+
         print("{} finished ".format(output))
-        # slacknoti("finished {}".format(output), "s")
+        
         env.save_avg_accuracy(run_counts, output)
 

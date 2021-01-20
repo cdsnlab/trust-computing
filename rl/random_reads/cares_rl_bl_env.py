@@ -23,7 +23,7 @@ class trustEnv:
         #* creates 3 actions: increase t_threshold OR decrease t_threshold
         #* general parameters
         print("[INFO] Reading file...")
-        self.data = pd.read_csv('../sampledata/'+filename, header=0)
+        self.data = pd.read_csv('../../sampledata/'+filename, header=0)
         print("[INFO] File loaded")
         self.action_space = None
         self.create_action_space( [-1, 0, 1], [-1, 0, 1], deltavalue) #* beta_d, dtt_d
@@ -39,7 +39,6 @@ class trustEnv:
         #* epoch parameters
         self.betarecord = defaultdict(list)
         self.average_reward = defaultdict(list)
-        self.average_gt=defaultdict(list)
         self.average_dtt= defaultdict(list)
         self.accuracy = defaultdict(list)
         self.precision = defaultdict(list)
@@ -55,10 +54,7 @@ class trustEnv:
         self.next_car_index = 1
         self.step_reward = 0
         self.step_dtt=0
-        self.cumulative_gt =0
 
-        self.PPV = 0
-        self.NPV = 0
 
         self.client = None
         self.connect()
@@ -71,25 +67,23 @@ class trustEnv:
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['cares_rl_bl95e']
+        self.accrewcollection = self.db['cares_rl_bl95_r']
 
-    def get_car(self):
-        
-        tv_id = int(self.data['indirect_tv'][self.next_car_index]*100)
-        tv_d = int(self.data['direct_tv'][self.next_car_index]*100)
-        
-        tv = ((self.beta/100) * tv_id + (1-(self.beta/100)) * tv_d) #! if beta close to 1 -> indirect evidence 
-        # print(tv_id, tv_d, tv)
-        if tv > self.dtt: 
-            self.cur_decision[self.next_car_index]=0 #! if benign, it should be over dtt
-        else: 
-            self.cur_decision[self.next_car_index]=1  #! if malicious, it should be under dtt
-        
-        self.result_values[self.next_car_index][0] = tv
-        self.result_values[self.next_car_index][1] = self.dtt # dynamic threshold 값.
-        self.cumulative_gt+=tv
+    def make_decision(self, samplelist):
+        # print(samplelist)
+        for index, sid in enumerate (samplelist):
+            tv_id = int(self.data['indirect_tv'][sid]*100)
+            tv_d = int(self.data['direct_tv'][sid]*100)
+            tv = (self.beta/100 * tv_id + (1-self.beta/100) * tv_d) #! if beta close to 1 -> indirect evidence 
+            
+            if tv > self.dtt: 
+                self.cur_decision[sid]=0 #! if benign, it should be over dtt
+            else: 
+                self.cur_decision[sid]=1  #! if malicious, it should be under dtt
+            # print(tv_id, tv_d, tv, self.dtt, self.beta/100)
+        # print(self.cur_decision)
 
-    def step2(self, action, car_id): 
+    def step(self, action): 
         #* inputs an action to current state & gets a reward to this action
         reward = 0
 
@@ -191,56 +185,54 @@ class trustEnv:
 
         return reward, self.state
 
-    def gt_evaluate(self, nci): #* gets gt accuracy regardless of time
-        if self.cur_decision[nci] == 1 and self.data['status'][nci] == 1: #TP
-            self.cases["gt"][0]+=1
-            self.tempcases['gt'][0]+=1
-        elif self.cur_decision[nci]==1 and self.data['status'][nci] == 0: #!FP
-            self.cases["gt"][1]+=1
-            self.tempcases['gt'][1]+=1
-        elif self.cur_decision[nci]==0 and self.data['status'][nci] == 1: #FN 
-            self.cases["gt"][2]+=1
-            self.tempcases['gt'][2]+=1
-        else: #!TN
-            self.cases["gt"][3]+=1
-            self.tempcases['gt'][3]+=1
-        
+    def evaluate(self, intnumb, samplelist): 
+        for index, sid in enumerate (samplelist):
+            if self.cur_decision[sid] == 1 and self.data['status'][sid] == 1: #TP
+                self.cases["gt"][0]+=1
+                self.tempcases['gt'][0]+=1
+            elif self.cur_decision[sid]==1 and self.data['status'][sid] == 0: #!FP
+                self.cases["gt"][1]+=1
+                self.tempcases['gt'][1]+=1
+            elif self.cur_decision[sid]==0 and self.data['status'][sid] == 1: #FN 
+                self.cases["gt"][2]+=1
+                self.tempcases['gt'][2]+=1
+            else: #!TN
+                self.cases["gt"][3]+=1
+                self.tempcases['gt'][3]+=1
+            # print(intnumb, self.dtt, self.cur_decision[sid], self.data['status'][sid])
+        # print(self.cases)
         #* precision
         if self.cases["gt"][0] + self.cases["gt"][1] == 0:
-            self.result_values[nci][2]=0
+            self.result_values[intnumb][2]=0
         else:
-            self.result_values[nci][2] = (self.cases["gt"][0])/(self.cases["gt"][0] + self.cases["gt"][1]) *100 
+            self.result_values[intnumb][2] = (self.cases["gt"][0])/(self.cases["gt"][0] + self.cases["gt"][1]) *100 
         #* accuracy
         if (self.cases["gt"][0] + self.cases["gt"][1] + self. cases["gt"][2] + self.cases["gt"][3]) ==0:
-            self.result_values[nci][3] =0
+            self.result_values[intnumb][3] =0
         else:
-            self.result_values[nci][3] = (self.cases["gt"][0] + self.cases["gt"][3])/(self.cases["gt"][0] + self.cases["gt"][1] + self.cases["gt"][2] + self.cases["gt"][3]) *100 
+            self.result_values[intnumb][3] = (self.cases["gt"][0] + self.cases["gt"][3])/(self.cases["gt"][0] + self.cases["gt"][1] + self.cases["gt"][2] + self.cases["gt"][3]) *100 
         #* recall
         if (self.cases["gt"][0] + self.cases["gt"][2]) == 0:
-            self.result_values[nci][4]=0
+            self.result_values[intnumb][4]=0
         else:
-            self.result_values[nci][4] = (self.cases["gt"][0])/(self.cases["gt"][0] + self.cases["gt"][2]) *100
+            self.result_values[intnumb][4] = (self.cases["gt"][0])/(self.cases["gt"][0] + self.cases["gt"][2]) *100
         #* f1 score
-        if self.result_values[nci][2]+self.result_values[nci][4] == 0:
-            self.result_values[nci][5]=0
+        if self.result_values[intnumb][2]+self.result_values[intnumb][4] == 0:
+            self.result_values[intnumb][5]=0
         else:
-            self.result_values[nci][5]= (2*self.result_values[nci][2]*self.result_values[nci][4]) / (self.result_values[nci][2] + self.result_values[nci][4])
-        #* beta values
-        self.result_values[nci][6] = self.beta
-        # print("step_DTT", self.step_dtt)
+            self.result_values[intnumb][5]= (2*self.result_values[intnumb][2]*self.result_values[intnumb][4]) / (self.result_values[intnumb][2] + self.result_values[intnumb][4])
+        self.result_values[intnumb][6] = self.beta
+        self.cur_decision ={}
 
-        # print(nci, self.result_values[nci])
-        # print(nci, self.cases)
-    def append_accuracy(self, run_counts, step):
+    def step_records(self, run_counts, step):
         self.precision[run_counts].append(self.result_values[step][2])
         self.accuracy[run_counts].append(self.result_values[step][3]) 
         self.recall[run_counts].append(self.result_values[step][4])
         self.f1score[run_counts].append(self.result_values[step][5])
         self.betarecord[run_counts].append(self.result_values[step][6])
         self.average_dtt[run_counts].append(self.step_dtt) 
-        self.average_gt[run_counts].append(self.cumulative_gt / step)
         self.average_reward[run_counts].append(self.step_reward ) 
-        # print(self.step_dtt, step)
+        # print(self.precision)
     def save_avg_accuracy(self, run_counts, name): #! iterate and make average of the iterations.
         # print(len(self.accuracy[0]))
         final_acc, final_dtt, final_gt, final_rew, final_precision, final_recall, final_acc_error, final_f1, final_beta = [], [], [], [], [], [], [], [], []
@@ -253,7 +245,6 @@ class trustEnv:
                 # print("i {} j {}".format(i,j))
                 temp[0]+=self.accuracy[i][j]  
                 temp[1]+=self.average_dtt[i][j] 
-                temp[2]+=self.average_gt[i][j] 
                 temp[3]+=self.average_reward[i][j]
                 temp[4]+=self.precision[i][j] 
                 temp[5]+=self.recall[i][j] 
@@ -266,7 +257,6 @@ class trustEnv:
             # print(temp)
             final_acc.append(temp[0]/run_counts)
             final_dtt.append(temp[1]/run_counts)
-            final_gt.append(temp[2]/run_counts)
             final_rew.append(temp[3]/run_counts)
             final_precision.append(temp[4]/run_counts)
             final_recall.append(temp[5]/run_counts)
@@ -278,8 +268,8 @@ class trustEnv:
         print("Recall: ", final_recall[-1])
         print("F1 score: ", final_f1[-1])
 
-        row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap,  "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "accuracy": final_acc, "avg_dtt": final_dtt, "avg_gt": final_gt, "cum_rew": final_rew, 'precision': final_precision, 'f1score': final_f1, 'recall': final_recall,"error":final_acc_error, 'beta_changes':final_beta}
-        # self.accrewcollection.insert_one(row)
+        row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap,  "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "accuracy": final_acc, "avg_dtt": final_dtt, "cum_rew": final_rew, 'precision': final_precision, 'f1score': final_f1, 'recall': final_recall,"error":final_acc_error, 'beta_changes':final_beta}
+        self.accrewcollection.insert_one(row)
 
     def reset(self): #* per iteration reset
         self.result_values = defaultdict(lambda: [0, 0, 0, 0, 0, 0,0]) #* actual trust value, dtt, precision, accuracy, recall, f1
@@ -287,7 +277,6 @@ class trustEnv:
         self.cur_decision ={}
         self.step_dtt = 0
         self.step_reward = 0
-        self.cumulative_gt = 0
         self.next_car_index = 1
         self.dtt = self.originals[0]
 
