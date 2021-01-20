@@ -57,9 +57,9 @@ class QLearningAgent():
 
 if __name__ == "__main__":
     wholeiteration = 0
-    for output in tqdm(named_product(v_d=[1,3,5], v_lr=[0.1,0.5, 0.9], v_df=[0.1, 0.5, 0.9], v_eps=[0.1, 0.5, 0.9], v_fd=[5, 10, 50], v_s=[1000, 2000, 5000], v_i=[10, 50, 90])):
+    #for output in tqdm(named_product(v_d=[1,3,5], v_lr=[0.1,0.5, 0.9], v_df=[0.1, 0.5, 0.9], v_eps=[0.1, 0.5, 0.9], v_fd=[5, 10, 50], v_s=[1000, 2000, 5000], v_i=[10, 50, 90])):
         
-    #for output in tqdm(named_product(v_d=[1], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[5, 10, 50, 100], v_s=[1000, 2000, 5000], v_i=[10, 50, 90])):
+    for output in tqdm(named_product(v_d=[1], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[5, 10, 50, 100], v_s=[1000], v_i=[90])):
     #for output in tqdm(named_product(v_d=[3,5], v_lr=[0.5, 0.9], v_df=[0.5, 0.9], v_eps=[0.5, 0.9], v_fd=[5, 10, 50, 100], v_s=[1000, 2000, 5000], v_i=[10, 50, 90])):
     #for output in tqdm(named_product(v_d=[1, 3, 5], v_lr=[0.01], v_df=[0.1], v_eps=[0.1], v_fd=[100], v_s=[1000], v_i=[90])):
 

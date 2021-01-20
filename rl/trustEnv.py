@@ -8,7 +8,7 @@ import json
 # import gym
 # from gym import spaces
 # from gym.utils import seeding
-# from collections import defaultdict
+from collections import defaultdict
 #* draw now
 import matplotlib.pyplot as plt
 from pymongo import MongoClient
@@ -209,6 +209,8 @@ class trustEnv:
         #* this is at every epoch.
         # self.average_iteration_accgt[epoch] = self.result_values[len(self.result_values)][3]*100.0 #* save the last value of the epoch.
         # self.cumulative_iteration_reward[epoch]  = self.cumulative_reward
+        print(self.result_values[len(self.result_values)][3]*100.0)
+        print(self.cumulative_reward)
         self.average_iteration_accgt.append(self.result_values[len(self.result_values)][3]*100.0) #* save the last value of the epoch.
         self.cumulative_iteration_reward.append(self.cumulative_reward)
         #self.average_iteration_accgt[count] = yaccgt
@@ -216,8 +218,9 @@ class trustEnv:
 
     def savetomongo_averaged(self, name): #* averages and saves the accumulated multiple run results into the mongo db
 
-        row = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yvalue": self.average_iteration_accgt, "ycrew": self.cumulative_iteration_reward}
-        self.accrewcollection.insert_one(row)
+        #row = {"id": str(name), "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "yvalue": self.average_iteration_accgt, "ycrew": self.cumulative_iteration_reward}
+        #self.accrewcollection.insert_one(row)
+        print("saving nothing...")
 
 
     def savetojson(self, name, filename):
