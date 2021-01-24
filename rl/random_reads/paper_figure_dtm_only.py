@@ -18,8 +18,8 @@ def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
 
-    dtmdcoll = db['dtm_d']
-    dtmcoll = db['dtm']
+    dtmdcoll = db['dtm_d95_r']
+    dtmcoll = db['dtm95_r']
 
     return dtmdcoll, dtmcoll
 
@@ -41,7 +41,6 @@ def getxvalue(key): #parse for v_s
 
             return temp[1]
             
-    
 data_load_state = st.text('Loading data...')
 dtmdcoll, dtmcoll = connect()
 data_load_state.text('Loading data...done!')
@@ -51,7 +50,7 @@ s =   st.multiselect("Total number of steps", [59999], default=[59999])
 i =   st.multiselect("Initial starting value", [10, 50, 90], default=[90])
 mvp =   st.multiselect("Malicious vehicle probability", [0.1, 0.2, 0.3, 0.4], default=[0.2])
 mbp =   st.multiselect("Malicious Behavior probability", [0.1, 0.2, 0.3, 0.4, 0.5], default=[0.5])
-oap =   st.multiselect("Outside attack probability", [0.1, 0.15, 0.2, 0.25, 0.3], default=[0.2])
+oap =   st.multiselect("Outside attack probability", [0.1, 0.15, 0.2, 0.25, 0.3], default=[0.1])
 
 rwcombo = reconstruct_rtm(i, s, mvp, mbp, oap)
 

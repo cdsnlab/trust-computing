@@ -64,17 +64,13 @@ oap=[0.1]
 ######################################## SB
 #########################################
 #########################################
-
 #######
-sb_results = make_subplots(
-    cols=3,
+sb_results_acc = make_subplots(
+    cols=1,
     rows=1,
-    # subplot_titles=(["(a) Detection Accuracy ", "(b) Dynamic Trust Threshold", "(c) Average Rewards"]),
-    column_titles=(["(a) Detection Accuracy ", "(b) Dynamic Trust Threshold", "(c) Average Rewards"])
-    
 )
 #* ACC
-sb_results.update_yaxes(
+sb_results_acc.update_yaxes(
     showgrid=True, 
     linewidth=2, 
     showline=True, 
@@ -86,10 +82,9 @@ sb_results.update_yaxes(
     mirror=True,  
     linecolor='black', 
     title_standoff=1,
-    row=1,
-    col=1,
+
     )
-sb_results.update_xaxes(
+sb_results_acc.update_xaxes(
     showgrid=True, 
     linewidth=2, 
     showline=True,
@@ -101,11 +96,27 @@ sb_results.update_xaxes(
     mirror=True, 
     linecolor='black',
     title_standoff=5,
-    row=1,
-    col=1,
+
     )
+sb_results_acc.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
+        l=5,
+        r=5,
+        b=5,
+        t=5,
+        pad=5
+    ),
+    font=dict(
+        size=24,
+    ),    
+)
+
+sb_results_dtt = make_subplots(
+    cols=1,
+    rows=1,
+)
 #* DTT
-sb_results.update_yaxes(
+sb_results_dtt.update_yaxes(
     showgrid=True, 
     linewidth=2, 
     showline=True, 
@@ -117,63 +128,24 @@ sb_results.update_yaxes(
     mirror=True,  
     linecolor='black',
     title_standoff=1,
-    row=1,
-    col=2,
-    )
-sb_results.update_xaxes(
-    showgrid=True, 
-    linewidth=2, 
-    showline=True,
-    zeroline=False, 
-    title_text="Steps",
-    gridcolor="gray", 
-    gridwidth=1, 
-    range=[0, 120], 
-    mirror=True, 
-    linecolor='black',
-    title_standoff=5,
-    row=1,
-    col=2,
-    )
-#* REW
-sb_results.update_yaxes(
-    showgrid=True, 
-    linewidth=2, 
-    showline=True, 
-    zeroline=False, 
-    # title_text="Average Rewards",
-    gridcolor="gray", 
-    gridwidth=1, 
-    range=[-1.1, 2.1], 
-    mirror=True,  
-    linecolor='black', 
-    title_standoff=1,
-    row=1,
-    col=3,
-    )
-sb_results.update_xaxes(
-    showgrid=True, 
-    linewidth=2, 
-    showline=True,
-    zeroline=False, 
-    title_text="Steps",
-    gridcolor="gray", 
-    gridwidth=1, 
-    range=[0, 120], 
-    mirror=True, 
-    linecolor='black',
-    title_standoff=5,
-    row=1,
-    col=3,
-    )
 
-sb_results.update_layout(
-    plot_bgcolor='rgba(0,0,0,0)', 
-    paper_bgcolor='rgba(0,0,0,0)', 
-    autosize=False,
-    height=600, 
-    width=1800, 
-    margin=dict(
+    )
+sb_results_dtt.update_xaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True,
+    zeroline=False, 
+    title_text="Steps",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 120], 
+    mirror=True, 
+    linecolor='black',
+    title_standoff=5,
+
+    )
+sb_results_dtt.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=470, width=600, margin=dict(
         l=5,
         r=5,
         b=5,
@@ -186,10 +158,10 @@ sb_results.update_layout(
     legend=dict(
         orientation='h',
         yanchor="bottom",
-        y=1.3,
-        xanchor="right",
-        x=0.65,
-        bgcolor="LightSteelBlue",
+        y=1.1,
+        xanchor="center",
+        x=0.5,
+        bgcolor="rgba(0,0,0,0)",
         bordercolor="Black",
         borderwidth=2,
         font=dict(
@@ -198,84 +170,67 @@ sb_results.update_layout(
     ),
     
 )
-sb_results.layout.annotations[0].update(y=1.1, font=dict(size=28))
-sb_results.layout.annotations[1].update(y=1.1, font=dict(size=28))
-sb_results.layout.annotations[2].update(y=1.1, font=dict(size=28))
 
-#######
 
-# fig_rew = make_subplots(
-#     cols=1,
-#     rows=1,
-#     # subplot_titles=(["Reward"])
-# )
-# fig_rew.update_yaxes(
-#     showgrid=True, linewidth=2, gridcolor="gray", gridwidth=1,  showline=True,zeroline=False, linecolor='black',mirror=True, title_text="Average Reward"
-#     )
-# fig_rew.update_xaxes(
-#     showgrid=True, linewidth=2,gridcolor="gray", gridwidth=1, range=[0, 120], title_text="Steps",mirror=True, showline=True,zeroline=False, linecolor='black'
-#     )
-# fig_rew.update_layout(
-#     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
-#         l=5,
-#         r=5,
-#         b=5,
-#         t=5,
-#         pad=4
-#     ),
-#     font=dict(
-#         size=24,
-#     ),
-#     # legend=dict(
-        
-#     #     bgcolor="LightSteelBlue",
-#     #     bordercolor="Black",
-#     #     borderwidth=2
-#     # )
-#     )
-# ########
-# fig_dtt = make_subplots(
-#     cols=1,
-#     rows=1,
-#     # subplot_titles=(["Dynamic Trust Threshold (DTT) "])
-# )
-# fig_dtt.update_yaxes(
-#     showgrid=True, linewidth=2, gridcolor="gray", gridwidth=1, range=[0, 1], mirror=True, showline=True, zeroline=False, linecolor='black', title_text="Trust threshold",
-#     )
-# fig_dtt.update_xaxes(
-#     showgrid=True, linewidth=2, gridcolor="gray", gridwidth=1, range=[0, 120],title_text="Steps",mirror=True, showline=True,zeroline=False, linecolor='black'
-#     )
-# fig_dtt.update_layout(
-#     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,
-# height=400, width=600, margin=dict(
-#         l=5,
-#         r=5,
-#         b=5,
-#         t=5,
-#         pad=4
-#     ),
-#     font=dict(
-#         size=24,
-#     ),
-#     # legend=dict(
-#     #     yanchor="top",
-#     #     y=0.99,
-#     #     xanchor="left",
-#     #     x=0.01,
-#     #     bgcolor="LightSteelBlue",
-#     #     bordercolor="Black",
-#     #     borderwidth=2
-#     # )
-# )
+sb_results_rew = make_subplots(
+    cols=1,
+    rows=1,
+)
+#* REW
+sb_results_rew.update_yaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True, 
+    zeroline=False, 
+    # title_text="Average Rewards",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[-1.1, 2.1], 
+    mirror=True,  
+    linecolor='black', 
+    title_standoff=1,
 
-# fig_beta = make_subplots(
-#     cols=1,
-#     rows=1,
-#     # subplot_titles=(["Reward"])
-# )
-# fig_beta.update_yaxes(showgrid=True, gridcolor="gray", range=[0, 100],  showline=True, linecolor='black')
-# fig_beta.update_xaxes(showgrid=True, gridcolor="gray", mirror=True, showline=True, linecolor='black')
-# fig_beta.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',height=400, width=600)
+    )
+sb_results_rew.update_xaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True,
+    zeroline=False, 
+    title_text="Steps",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 120], 
+    mirror=True, 
+    linecolor='black',
+    title_standoff=5,
+
+    )
+sb_results_rew.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
+        l=5,
+        r=5,
+        b=5,
+        t=5,
+        pad=5
+    ),
+    font=dict(
+        size=24,
+    ), 
+    legend=dict(
+        orientation='h',
+        yanchor="bottom",
+        y=1.1,
+        xanchor="right",
+        x=0.65,
+        bgcolor="rgba(0,0,0,0)",
+        bordercolor="Black",
+        borderwidth=2,
+        font=dict(
+            size=24,
+        )
+    ),
+    
+)
 
 symbols = ['circle','diamond','cross']
 linetype = ['dot', 'dash', 'solid']
@@ -298,28 +253,28 @@ for idx, k in enumerate(allcombination):
     rlsbf1 = mydocrlsb[0]['f1score']
     rlsberror = mydocrlsb[0]['error']
 
-    mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['accuracy']
-    rlblprecision = mydocrlbl[0]['precision']
-    rlblrecall = mydocrlbl[0]['recall']
-    rlblrew = mydocrlbl[0]['cum_rew']
-    rlbldtt = mydocrlbl[0]['avg_dtt']
-    rlblf1 = mydocrlbl[0]['f1score']
-    rlblerror = mydocrlbl[0]['error']
+    # mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    # rlblaccuracy = mydocrlbl[0]['accuracy']
+    # rlblprecision = mydocrlbl[0]['precision']
+    # rlblrecall = mydocrlbl[0]['recall']
+    # rlblrew = mydocrlbl[0]['cum_rew']
+    # rlbldtt = mydocrlbl[0]['avg_dtt']
+    # rlblf1 = mydocrlbl[0]['f1score']
+    # rlblerror = mydocrlbl[0]['error']
     
     #*ACC
-    sb_results.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100), showlegend=True), row=1, col=1)
+    sb_results_acc.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100), showlegend=False))
     # sb_results.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="S-Delta  {}".format(d[idx])), secondary_y=True,) #! if u r going to add another y-axis
     # sb_results.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=1), error_y = dict(type='data',array= rlsberror, visible=True), name="me"))
     # sb_results.add_trace(go.Scatter(x=x, y=rlblaccuracy, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-delta {}".format(d[idx])))
 
     #*DTT
-    sb_results.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100),showlegend=False), row=1, col=2) 
+    sb_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100),showlegend=True)) 
     # sb_results.add_trace(go.Scatter(x=x, y=rlbldtt, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-delta {}".format(d[idx]))) 
 
     #* REW
     # sb_results.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color=color[idx], size=10, symbol='x'),line=dict(width=2, color=color[idx],dash=linetype[idx]), name="S-Delta  {}".format(d[idx])), row=1, col=3) 
-    sb_results.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: {}".format(d[idx]/100),showlegend=False),row=1, col=3) 
+    sb_results_rew.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: {}".format(d[idx]/100),showlegend=False)) 
     # sb_results.add_trace(go.Scatter(x=x, y=rlblrew, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-delta {}".format(d[idx]))) 
 
 #*custom version (RLBL-delta:1, )
@@ -343,25 +298,25 @@ for idx, k in enumerate(allcombination):
     rlsbf1 = mydocrlsb[0]['f1score']
     rlsberror = mydocrlsb[0]['error']
 
-    mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['accuracy']
-    rlblprecision = mydocrlbl[0]['precision']
-    rlblrecall = mydocrlbl[0]['recall']
-    rlblrew = mydocrlbl[0]['cum_rew']
-    rlbldtt = mydocrlbl[0]['avg_dtt']
-    rlblf1 = mydocrlbl[0]['f1score']
-    rlblerror = mydocrlbl[0]['error']
+    # mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    # rlblaccuracy = mydocrlbl[0]['accuracy']
+    # rlblprecision = mydocrlbl[0]['precision']
+    # rlblrecall = mydocrlbl[0]['recall']
+    # rlblrew = mydocrlbl[0]['cum_rew']
+    # rlbldtt = mydocrlbl[0]['avg_dtt']
+    # rlblf1 = mydocrlbl[0]['f1score']
+    # rlblerror = mydocrlbl[0]['error']
         
-    sb_results.add_trace(go.Scatter(x=x, y=rlsbaccuracy,line=dict(width=4, color="black",dash="solid"), name="δ: v",showlegend=True),row=1, col=1)
+    sb_results_acc.add_trace(go.Scatter(x=x, y=rlsbaccuracy,line=dict(width=4, color="black",dash="solid"), name="δ: v",showlegend=False))
     # sb_results.add_trace(go.Scatter(x=x, y=rlsbaccuracy,line=dict(width=4, color="blue",dash="dash"), name="CARES-S",showlegend=True),row=1, col=1)
     # # sb_results.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=1), error_y = dict(type='data',array= rlsberror, visible=True), name="me"))
     # sb_results.add_trace(go.Scatter(x=x, y=rlblaccuracy,line=dict(width=2, color="yellow",dash="solid"), name="BL-variable"))
     
-    sb_results.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=False),row=1, col=2) 
+    sb_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=True)) 
     # sb_results.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color='blue',dash="dash"), name="CARES-S",showlegend=True),row=1, col=1) 
     # sb_results.add_trace(go.Scatter(x=x, y=rlbldtt, line=dict(width=2, color='yellow',dash="solid"), name="BL-variable")) 
 
-    sb_results.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color='black', size=10, symbol='circle', opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=False),row=1, col=3) 
+    sb_results_rew.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color='black', size=10, symbol='circle', opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=False)) 
     # sb_results.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color='blue', size=10, symbol='circle', opacity=0.2, line=dict(color='blue')),line=dict(width=4, color='blue',dash="solid"), name="CARES-S",showlegend=True), row=1, col=1) 
 
     # sb_results.add_trace(go.Scatter(x=x, y=rlblrew, line=dict(width=2, color='yellow',dash="solid"), name="BL-variable"))
@@ -385,15 +340,12 @@ mbp=[0.9]
 oap=[0.1]
 
 #######
-bl_results = make_subplots(
-    cols=3,
+bl_results_acc = make_subplots(
+    cols=1,
     rows=1,
-    # subplot_titles=(["(a) Detection Accuracy ", "(b) Dynamic Trust Threshold", "(c) Average Rewards"]),
-    column_titles=(["(a) Detection Accuracy ", "(b) Dynamic Trust Threshold", "(c) Average Rewards"])
-    
 )
 #* ACC
-bl_results.update_yaxes(
+bl_results_acc.update_yaxes(
     showgrid=True, 
     linewidth=2, 
     showline=True, 
@@ -405,10 +357,9 @@ bl_results.update_yaxes(
     mirror=True,  
     linecolor='black', 
     title_standoff=1,
-    row=1,
-    col=1,
+
     )
-bl_results.update_xaxes(
+bl_results_acc.update_xaxes(
     showgrid=True, 
     linewidth=2, 
     showline=True,
@@ -420,11 +371,27 @@ bl_results.update_xaxes(
     mirror=True, 
     linecolor='black',
     title_standoff=5,
-    row=1,
-    col=1,
+
     )
+bl_results_acc.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
+        l=5,
+        r=5,
+        b=5,
+        t=5,
+        pad=5
+    ),
+    font=dict(
+        size=24,
+    ),    
+)
+
+bl_results_dtt = make_subplots(
+    cols=1,
+    rows=1,
+)
 #* DTT
-bl_results.update_yaxes(
+bl_results_dtt.update_yaxes(
     showgrid=True, 
     linewidth=2, 
     showline=True, 
@@ -436,58 +403,24 @@ bl_results.update_yaxes(
     mirror=True,  
     linecolor='black',
     title_standoff=1,
-    row=1,
-    col=2,
-    )
-bl_results.update_xaxes(
-    showgrid=True, 
-    linewidth=2, 
-    showline=True,
-    zeroline=False, 
-    title_text="Steps",
-    gridcolor="gray", 
-    gridwidth=1, 
-    range=[0, 120], 
-    mirror=True, 
-    linecolor='black',
-    title_standoff=5,
-    row=1,
-    col=2,
-    )
-#* REW
-bl_results.update_yaxes(
-    showgrid=True, 
-    linewidth=2, 
-    showline=True, 
-    zeroline=False, 
-    # title_text="Average Rewards",
-    gridcolor="gray", 
-    gridwidth=1, 
-    range=[-1.1, 2.1], 
-    mirror=True,  
-    linecolor='black', 
-    title_standoff=1,
-    row=1,
-    col=3,
-    )
-bl_results.update_xaxes(
-    showgrid=True, 
-    linewidth=2, 
-    showline=True,
-    zeroline=False, 
-    title_text="Steps",
-    gridcolor="gray", 
-    gridwidth=1, 
-    range=[0, 120], 
-    mirror=True, 
-    linecolor='black',
-    title_standoff=5,
-    row=1,
-    col=3,
-    )
 
-bl_results.update_layout(
-    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=600, width=1800, margin=dict(
+    )
+bl_results_dtt.update_xaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True,
+    zeroline=False, 
+    title_text="Steps",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 120], 
+    mirror=True, 
+    linecolor='black',
+    title_standoff=5,
+
+    )
+bl_results_dtt.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=470, width=600, margin=dict(
         l=5,
         r=5,
         b=5,
@@ -500,10 +433,10 @@ bl_results.update_layout(
     legend=dict(
         orientation='h',
         yanchor="bottom",
-        y=1.3,
-        xanchor="right",
-        x=0.65,
-        bgcolor="LightSteelBlue",
+        y=1.1,
+        xanchor="center",
+        x=0.5,
+        bgcolor="rgba(0,0,0,0)",
         bordercolor="Black",
         borderwidth=2,
         font=dict(
@@ -512,9 +445,67 @@ bl_results.update_layout(
     ),
     
 )
-bl_results.layout.annotations[0].update(y=1.1, font=dict(size=28))
-bl_results.layout.annotations[1].update(y=1.1, font=dict(size=28))
-bl_results.layout.annotations[2].update(y=1.1, font=dict(size=28))
+
+
+bl_results_rew = make_subplots(
+    cols=1,
+    rows=1,
+)
+#* REW
+bl_results_rew.update_yaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True, 
+    zeroline=False, 
+    # title_text="Average Rewards",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[-1.1, 2.1], 
+    mirror=True,  
+    linecolor='black', 
+    title_standoff=1,
+
+    )
+bl_results_rew.update_xaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True,
+    zeroline=False, 
+    title_text="Steps",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 120], 
+    mirror=True, 
+    linecolor='black',
+    title_standoff=5,
+
+    )
+bl_results_rew.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
+        l=5,
+        r=5,
+        b=5,
+        t=5,
+        pad=5
+    ),
+    font=dict(
+        size=24,
+    ), 
+    legend=dict(
+        orientation='h',
+        yanchor="bottom",
+        y=1.1,
+        xanchor="right",
+        x=0.65,
+        bgcolor="rgba(0,0,0,0)",
+        bordercolor="Black",
+        borderwidth=2,
+        font=dict(
+            size=24,
+        )
+    ),
+    
+)
 
 #######################################################DELTA
 #* orignal version
@@ -544,11 +535,11 @@ for idx, k in enumerate(allcombination):
     rlblf1 = mydocrlbl[0]['f1score']
     rlblerror = mydocrlbl[0]['error']
     
-    bl_results.add_trace(go.Scatter(x=x, y=rlblaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100),showlegend=True), row=1, col=1) 
+    bl_results_acc.add_trace(go.Scatter(x=x, y=rlblaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100),showlegend=False))
     
-    bl_results.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlbldtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100),showlegend=False), row=1, col=2) 
+    bl_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlbldtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="δ: {}".format(d[idx]/100),showlegend=True))
     
-    bl_results.add_trace(go.Scatter(x=x, y=rlblrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: {}".format(d[idx]/100),showlegend=False), row=1, col=3) 
+    bl_results_rew.add_trace(go.Scatter(x=x, y=rlblrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: {}".format(d[idx]/100),showlegend=False))
     # fig_rew.add_trace(go.Scatter(x=x, y=rlblrew, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-delta {}".format(d[idx]))) 
 
 
@@ -583,12 +574,12 @@ for idx, k in enumerate(allcombination):
     rlblerror = mydocrlbl[0]['error']
         
 
-    bl_results.add_trace(go.Scatter(x=x, y=rlblaccuracy,line=dict(width=4, color="black",dash="solid"), name="δ: v",showlegend=True),row=1, col=1)
+    bl_results_acc.add_trace(go.Scatter(x=x, y=rlblaccuracy,line=dict(width=4, color="black",dash="solid"), name="δ: v",showlegend=False))
     
-    bl_results.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlbldtt], line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=False),row=1, col=2) 
+    bl_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlbldtt], line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=False))
 
 
-    bl_results.add_trace(go.Scatter(x=x, y=rlblrew, mode='markers', marker=dict(color='black', size=10, symbol='circle', opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=False),row=1, col=3) 
+    bl_results_rew.add_trace(go.Scatter(x=x, y=rlblrew, mode='markers', marker=dict(color='black', size=10, symbol='circle', opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="δ: v",showlegend=False))
 
   
     # fig_detection_accuracy.add_trace(go.Scatter(x=x, y=rlblaccuracy,line=dict(width=4, color="red",dash="solid"), name="CARES-B",showlegend=True))
@@ -604,7 +595,9 @@ for idx, k in enumerate(allcombination):
 
 
 st.title("SB Scheme: ")
-st.plotly_chart(sb_results, use_container_width=False)
+st.plotly_chart(sb_results_acc, use_container_width=False)
+st.plotly_chart(sb_results_dtt, use_container_width=False)
+st.plotly_chart(sb_results_rew, use_container_width=False)
 
 # st.title("SB Scheme: Reward over time")
 # st.plotly_chart(fig_rew, use_container_width=False)
@@ -614,7 +607,9 @@ st.plotly_chart(sb_results, use_container_width=False)
 
 
 st.title("BL Scheme: ")
-st.plotly_chart(bl_results , use_container_width=False)
+st.plotly_chart(bl_results_acc , use_container_width=False)
+st.plotly_chart(bl_results_dtt , use_container_width=False)
+st.plotly_chart(bl_results_rew , use_container_width=False)
 
 # st.title("BL Scheme: Reward over time")
 # st.plotly_chart(fig_rew_bl, use_container_width=False)

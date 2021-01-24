@@ -20,16 +20,20 @@ def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
 
-    cares_rl_sb = db['cares_rl_sb95']
-    cares_rl_bl = db['cares_rl_bl95']
+    cares_rl_sb = db['cares_rl_sb_de001halfsteps']
+    cares_rl_bl = db['cares_rl_bl_de001halfsteps']
 
-    rtmcoll = db['rtm95']
-    dtmcoll = db['dtm95']
-    istmcoll = db['istm95']
-    rtmdcoll = db['rtm_d95']
-    dtmdcoll = db['dtm_d95']
-    istmdcoll = db['istm_d95']
-    return cares_rl_sb, cares_rl_bl, rtmcoll, dtmcoll, istmcoll, rtmdcoll, dtmdcoll, istmdcoll
+    cares_rl_sb_custom=db['cares_rl_sb_custom_de001halfsteps']
+    cares_rl_bl_custom=db['cares_rl_bl_custom_de001halfsteps']
+
+    rtmcoll = db['rtm95_r_vs']
+    dtmcoll = db['dtm95_r_vs']
+    istmcoll = db['istm95_r_vs']
+    rtmdcoll = db['rtm_d95_r_vs']
+    dtmdcoll = db['dtm_d95_r_vs']
+    istmdcoll = db['istm_d95_r_vs']
+
+    return cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom, rtmcoll, dtmcoll, istmcoll, rtmdcoll, dtmdcoll, istmdcoll
 
 def named_product(**items):
     Product = namedtuple('Product', items.keys())
@@ -56,7 +60,7 @@ def getxvalue(key): #parse for v_s
             return temp[1]
             
 data_load_state = st.text('Loading data...')
-cares_rl_sb, cares_rl_bl, rtmcoll, dtmcoll, istmcoll, rtmdcoll, dtmdcoll, istmdcoll = connect()
+cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom, rtmcoll, dtmcoll, istmcoll, rtmdcoll, dtmdcoll, istmdcoll = connect()
 data_load_state.text('Loading data...done!')
 
 d = [5]
@@ -64,25 +68,98 @@ lr=[0.1]
 df=[0.1]
 eps=[0.5]
 fd=[1]
-s=[59999]
-i=[50]
-mvp=[0.2]
-mbp=[0.5]
-oap=[0.2]
-#! for all pairs of d, lr, df, eps, fd, s, i, create a string and find it from the JSON.s
+s=[12000]
+i=[10]
+mvp=[0.3]
+mbp=[0.9]
+oap=[0.3]
+
+color = ['red', 'blue', 'green']
 
 st.title("Detection Accuracy! ")
 
 fig_learn_speed = make_subplots(
-    cols=1,
+    cols=2,
     rows=1,
-    subplot_titles=("Detection Accuracy(%)", "DTT changes")
+    horizontal_spacing = 0.15,
+    # subplot_titles=("(a) Detection accuracy", " (b) Dynamic Trust Threshold ")
     #specs=[[{"secondary_y": True}, {"secondary_y": True}]],
 )
-fig_learn_speed.update_yaxes(showgrid=True, gridcolor="black", range=[0, 100], mirror=True, showline=True, linecolor='black')
-# fig_learn_speed.update_yaxes(showgrid=True, gridcolor="black",title_text="F1 Score", range=[0, 100], secondary_y=True)
-fig_learn_speed.update_xaxes(showgrid=True, title_text="Interaction number",gridcolor="black", mirror=True, showline=True, linecolor='black')
-fig_learn_speed.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',height=400, width=1000)
+fig_learn_speed.update_yaxes(
+    showgrid=True, 
+    linewidth=2, 
+    # title_text="Detection Accuracy (%)",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[70, 100], 
+    mirror=True, 
+    showline=True,
+    zeroline=False, 
+    linecolor='black',
+    title_standoff=1, 
+    col=1, 
+    row=1,
+)
+fig_learn_speed.update_xaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True,
+    zeroline=False, 
+    title_text="Steps",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 120], 
+    mirror=True, 
+    linecolor='black', 
+    col=1, 
+    row=1,
+)
+fig_learn_speed.update_yaxes(
+    showgrid=True, 
+    linewidth=2, 
+    # title_text="DTT",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 1], 
+    mirror=True, 
+    showline=True,
+    zeroline=False, 
+    linecolor='black', 
+    title_standoff=1,
+    col=2, 
+    row=1,
+)
+fig_learn_speed.update_xaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True,
+    zeroline=False, 
+    title_text="Steps",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 120], 
+    mirror=True, 
+    linecolor='black', 
+    col=2, 
+    row=1,
+)
+
+fig_learn_speed.update_layout(
+    plot_bgcolor='rgba(0,0,0,0)', 
+    paper_bgcolor='rgba(0,0,0,0)', 
+    autosize=False,
+    height=400, 
+    width=1000, 
+    margin=dict(
+        l=6,
+        r=6,
+        b=6,
+        t=6,
+        pad=4
+    ),font=dict(
+        size=24,
+    ), 
+)
 # fig_learn_speed.update_layout(height=600, width=600)
 
 allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
@@ -90,212 +167,123 @@ rwcombo = reconstruct_rtm(i, s, mvp, mbp, oap)
 for k in allcombination:
     print(k)
     xvalue = getxvalue(k)
+    xvalue=12000
     x = np.arange(int(xvalue)/100)
 
     myquery = {"id": str(k)}
     
-    mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'cum_rew':1, 'avg_dtt':1}))
+    mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
     rlsbaccuracy = mydocrlsb[0]['accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
-    rlsbf1 = mydocrlsb[0]['f1score']
     rlsbrew = mydocrlsb[0]['cum_rew']
     rlsbdtt = mydocrlsb[0]['avg_dtt']
+    rlsbf1 = mydocrlsb[0]['f1score']
+    rlsberror = mydocrlsb[0]['error']
 
-    mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'cum_rew':1, 'avg_dtt':1}))
+    mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
     rlblaccuracy = mydocrlbl[0]['accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
-    rlblf1 = mydocrlbl[0]['f1score']
     rlblrew = mydocrlbl[0]['cum_rew']
     rlbldtt = mydocrlbl[0]['avg_dtt']
+    rlblf1 = mydocrlbl[0]['f1score']
+    rlblerror = mydocrlbl[0]['error']
     #mvp: 0.1, 0.2, 0.3, 0.4
     #mbp: 0.1, 0.2, 0.3, 0.4, 0.5
     #oap: 0.1, 0.15, 0.2, 0.25, 0.3
 
     fig_learn_speed.add_trace(
-        go.Scatter(x=x, y=rlsbaccuracy, name="CARES_SB", mode='lines', line=dict(color='yellow', width=2, dash='solid')),
+        go.Scatter(x=x, y=rlsbaccuracy, name="CARES-S", mode='lines', line=dict(color='black', width=4, dash='solid')),
         col=1,
         row=1,        
         )
     fig_learn_speed.add_trace(
-        go.Scatter(x=x, y=rlblaccuracy, name="CARES_BL", mode='lines', line=dict(color='yellow', width=2, dash='dash')),
+        go.Scatter(x=x, y=rlblaccuracy, name="CARES-B", mode='lines', line=dict(color='black', width=4, dash='dot')),
         col=1,
         row=1,
     )
-    # fig_learn_speed.add_trace(
-    #     go.Scatter(x=x, y=rlsbdtt, name="CARES_SB_DTT", line=dict(color='black', width=2, dash='solid'),showlegend=False),
-    #     col=1,
-    #     row=2
-    # )
-    # fig_learn_speed.add_trace(
-    #     go.Scatter(x=x, y=rlbldtt, name="CARES_BL_DTT", line=dict(color='black', width=2, dash='dash'),showlegend=False),
-    #     col=1,
-    #     row=2
-    # )
-# i=[50]
-# allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
-# for k in allcombination:
-#     print(k)
-#     xvalue = getxvalue(k)
-#     x = np.arange(int(xvalue)/100)
+    fig_learn_speed.add_trace(
+        go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], name="CARES-S", line=dict(color='black', width=4, dash='solid'),showlegend=False),
+        col=2,
+        row=1
+    )
+    fig_learn_speed.add_trace(
+        go.Scatter(x=x, y=[t / 100 for t in rlbldtt], name="CARES-B", line=dict(color='black', width=4, dash='dot'),showlegend=False),
+        col=2,
+        row=1
+    )
+d=[1]
 
-#     myquery = {"id": str(k)}
+allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
+
+for idx, k in enumerate(allcombination):
+    print(k)
+    xvalue = getxvalue(k)
+    xvalue=12000
+
+    x = np.arange(int(xvalue)/100)
+    myquery = {"id": str(k)}
     
-#     mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'cum_rew':1, 'avg_dtt':1}))
-#     rlsbaccuracy = mydocrlsb[0]['accuracy']
-#     rlsbprecision = mydocrlsb[0]['precision']
-#     rlsbrecall = mydocrlsb[0]['recall']
-#     rlsbf1 = mydocrlsb[0]['f1score']
-#     rlsbrew = mydocrlsb[0]['cum_rew']
-#     rlsbdtt = mydocrlsb[0]['avg_dtt']
+    mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    # print(mydocrlsb)
+    rlsbaccuracy = mydocrlsb[0]['accuracy']
+    rlsbprecision = mydocrlsb[0]['precision']
+    rlsbrecall = mydocrlsb[0]['recall']
+    rlsbrew = mydocrlsb[0]['cum_rew']
+    rlsbdtt = mydocrlsb[0]['avg_dtt']
+    rlsbf1 = mydocrlsb[0]['f1score']
+    rlsberror = mydocrlsb[0]['error']
 
-#     mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'cum_rew':1, 'avg_dtt':1}))
-#     rlblaccuracy = mydocrlbl[0]['accuracy']
-#     rlblprecision = mydocrlbl[0]['precision']
-#     rlblrecall = mydocrlbl[0]['recall']
-#     rlblf1 = mydocrlbl[0]['f1score']
-#     rlblrew = mydocrlbl[0]['cum_rew']
-#     rlbldtt = mydocrlbl[0]['avg_dtt']
-#     #mvp: 0.1, 0.2, 0.3, 0.4
-#     #mbp: 0.1, 0.2, 0.3, 0.4, 0.5
-#     #oap: 0.1, 0.15, 0.2, 0.25, 0.3
-
-#     fig_learn_speed.add_trace(
-#         go.Scatter(x=x, y=rlsbaccuracy, name="CARES_SB", mode='lines', line=dict(color='black', width=2, dash='solid'), showlegend=False),
-#         col=1,
-#         row=1,        
-#         )
-#     fig_learn_speed.add_trace(
-#         go.Scatter(x=x, y=rlblaccuracy, name="CARES_BL", mode='lines', line=dict(color='black', width=2, dash='dash'), showlegend=False),
-#         col=1,
-#         row=1,
-#     )
-#     # fig_learn_speed.add_trace(
-#     #     go.Scatter(x=x, y=rlsbdtt, name="CARES_SB_DTT", line=dict(color='black', width=2, dash='solid'),showlegend=False),
-#     #     col=1,
-#     #     row=2
-#     # )
-#     # fig_learn_speed.add_trace(
-#     #     go.Scatter(x=x, y=rlbldtt, name="CARES_BL_DTT", line=dict(color='black', width=2, dash='dash'),showlegend=False),
-#     #     col=1,
-#     #     row=2
-#     # )
-# i=[90]
-# allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
-# for k in allcombination:
-#     print(k)
-#     xvalue = getxvalue(k)
-#     x = np.arange(int(xvalue)/100)
-
-#     myquery = {"id": str(k)}
-    
-#     mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'cum_rew':1, 'avg_dtt':1}))
-#     rlsbaccuracy = mydocrlsb[0]['accuracy']
-#     rlsbprecision = mydocrlsb[0]['precision']
-#     rlsbrecall = mydocrlsb[0]['recall']
-#     rlsbf1 = mydocrlsb[0]['f1score']
-#     rlsbrew = mydocrlsb[0]['cum_rew']
-#     rlsbdtt = mydocrlsb[0]['avg_dtt']
-
-#     mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'cum_rew':1, 'avg_dtt':1}))
-#     rlblaccuracy = mydocrlbl[0]['accuracy']
-#     rlblprecision = mydocrlbl[0]['precision']
-#     rlblrecall = mydocrlbl[0]['recall']
-#     rlblf1 = mydocrlbl[0]['f1score']
-#     rlblrew = mydocrlbl[0]['cum_rew']
-#     rlbldtt = mydocrlbl[0]['avg_dtt']
-#     #mvp: 0.1, 0.2, 0.3, 0.4
-#     #mbp: 0.1, 0.2, 0.3, 0.4, 0.5
-#     #oap: 0.1, 0.15, 0.2, 0.25, 0.3
-
-#     fig_learn_speed.add_trace(
-#         go.Scatter(x=x, y=rlsbaccuracy, name="CARES_SB", mode='lines', line=dict(color='black', width=2, dash='solid'), showlegend=False),
-#         col=1,
-#         row=1,        
-#         )
-#     fig_learn_speed.add_trace(
-#         go.Scatter(x=x, y=rlblaccuracy, name="CARES_BL", mode='lines', line=dict(color='black', width=2, dash='dash'), showlegend=False),
-#         col=1,
-#         row=1,
-#     )
+    mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    rlblaccuracy = mydocrlbl[0]['accuracy']
+    rlblprecision = mydocrlbl[0]['precision']
+    rlblrecall = mydocrlbl[0]['recall']
+    rlblrew = mydocrlbl[0]['cum_rew']
+    rlbldtt = mydocrlbl[0]['avg_dtt']
+    rlblf1 = mydocrlbl[0]['f1score']
+    rlblerror = mydocrlbl[0]['error']
     # fig_learn_speed.add_trace(
-    #     go.Scatter(x=x, y=rlsbdtt, name="CARES_SB_DTT", line=dict(color='black', width=2, dash='solid'),showlegend=False),
+    #     go.Scatter(x=x, y=rlsbaccuracy, name="CARES-S", mode='lines', line=dict(color='black', width=4, dash='solid')),
     #     col=1,
-    #     row=2
+    #     row=1,        
+    #     )
+    # fig_learn_speed.add_trace(
+    #     go.Scatter(x=x, y=rlblaccuracy, name="CARES-B", mode='lines', line=dict(color='black', width=4, dash='dot')),
+    #     col=1,
+    #     row=1,
     # )
     # fig_learn_speed.add_trace(
-    #     go.Scatter(x=x, y=rlbldtt, name="CARES_BL_DTT", line=dict(color='black', width=2, dash='dash'),showlegend=False),
-    #     col=1,
-    #     row=2
+    #     go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], name="CARES-S", line=dict(color='black', width=4, dash='solid'),showlegend=False),
+    #     col=2,
+    #     row=1
     # )
+    # fig_learn_speed.add_trace(
+    #     go.Scatter(x=x, y=[t / 100 for t in rlbldtt], name="CARES-B", line=dict(color='black', width=4, dash='dot'),showlegend=False),
+    #     col=2,
+    #     row=1
+    # )
+    # fig_da_init.add_trace(go.Scatter(x=x, y=rlsbaccuracy,line=dict(width=2, color="yellow",dash=linetype[idx]), name="SB-variable {}".format(i[idx])))
+    # # fig_da_init.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=1), error_y = dict(type='data',array= rlsberror, visible=True), name="me"))
+    # fig_da_init.add_trace(go.Scatter(x=x, y=rlblaccuracy,line=dict(width=2, color="yellow",dash=linetype[idx]), name="BL-variable {}".format(i[idx])))
 
-# fig_learn_speed.add_annotation(
-# x=10, 
-# y=10,
-# ax=100,
-# ay=0,
-# xref='x',
-# yref='y',
-# axref='x',
-# ayref='y',
-# text="Initial DTT: 10",
-# font=dict(
-#     color="red",
-#     size=16
-# ),
-# showarrow=True,
-# arrowhead=1,
-# col=1,
-# row=2
-# )
+    # sb_results.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="init θ: {}".format(i[idx]),showlegend=True), row=1, col=2) 
+    # fig_dtt_init.add_trace(go.Scatter(x=x, y=rlsbdtt, line=dict(width=2, color='yellow',dash=linetype[idx]), name="SB-variable {}".format(i[idx]))) 
+    # fig_dtt_init.add_trace(go.Scatter(x=x, y=rlbldtt, line=dict(width=2, color='yellow',dash=linetype[idx]), name="BL-variable {}".format(i[idx]))) 
 
+    # sb_results.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="init θ: {}".format(i[idx]),showlegend=True), row=1, col=3) 
+    # fig_rew_init.add_trace(go.Scatter(x=x, y=rlsbrew, line=dict(width=2, color='yellow',dash=linetype[idx]), name="SB-variable {}".format(i[idx]))) 
+    # fig_rew_init.add_trace(go.Scatter(x=x, y=rlblrew, line=dict(width=2, color='yellow',dash=linetype[idx]), name="BL-variable {}".format(i[idx]))) 
 
-# fig_learn_speed.add_annotation(
-# x=10, 
-# y=50,
-# ax=250,
-# ay=40,
-# xref='x',
-# yref='y',
-# axref='x',
-# ayref='y',
-# text="Initial DTT: 50",
-# font=dict(
-#     color="red",
-#     size=16
-# ),
-# showarrow=True,
-# arrowhead=1,
-# col=1,
-# row=2
-# )
-
-# fig_learn_speed.add_annotation(
-# x=10, 
-# y=90,
-# ax=100,
-# ay=0,
-# xref='x',
-# yref='y',
-# axref='x',
-# ayref='y',
-# text="Initial DTT: 90",
-# font=dict(
-#     color="red",
-#     size=16
-# ),showarrow=True,
-# arrowhead=1,
-# col=1,
-# row=2
-# )
 
 ############################################
 
 # #! draw RW
-for j in rwcombo:
+for idx, j in enumerate(rwcombo):
     print(j)
     xvalue = getxvalue(j)
+    xvalue=12000
+
     x = np.arange(int(xvalue)/100)
 
     myquery = {'id': str(j)}
@@ -343,17 +331,17 @@ for j in rwcombo:
     istmd_dtt = mydoc_istmd[0]['dtt']
 
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=rtm_accuracy, name="RTM", ),col=1, row=1)
-    fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmd_accuracy, name="RTMD", ),col=1, row=1)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmd_accuracy, name="RTMD", line=dict(color=color[0], width=4, dash='solid') ),col=1, row=1)
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=dtm_accuracy, name="DTM", ),col=1, row=1)
-    fig_learn_speed.add_trace(go.Scatter(x=x, y=dtmd_accuracy, name="DTMD", ),col=1, row=1)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=dtmd_accuracy, name="DTMD", line=dict(color=color[1], width=4, dash='solid')),col=1, row=1)
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=istm_accuracy, name="ISTM", ),col=1, row=1)
-    fig_learn_speed.add_trace(go.Scatter(x=x, y=istmd_accuracy, name="ISTMD", ),col=1, row=1)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=istmd_accuracy, name="ISTMD", line=dict(color=color[2], width=4, dash='solid')),col=1, row=1)
 
-    # fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmf11, name="RTM-f1",marker=dict(size=12,symbol="circle")) ,col=2, row=1)
-    # fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmd_dtt, name="RTMD_DTT",),col=1, row=2)
+    # fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmf11, name="RTM-f1",marker=dict(size=12,symbol="circle")) ,col=1, row=2)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=[t / 100 for t in rtmd_dtt], name="RTMD", line=dict(color=color[0], width=4,),showlegend=False),col=2, row=1)
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=dtmf11, name="DTM-f1",marker=dict(size=12,symbol="circle")),col=2, row=1)
-    # fig_learn_speed.add_trace(go.Scatter(x=x, y=dtmd_dtt, name="DTMD_DTT",),col=1, row=2)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=[t / 100 for t in dtmd_dtt], name="DTMD", line=dict(color=color[1], width=4,),showlegend=False),col=2, row=1)
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=istmf11, name="ISTM-f1",marker=dict(size=12,symbol="circle")),col=2, row=1)
-    # fig_learn_speed.add_trace(go.Scatter(x=x, y=istmd_dtt, name="ISTMD_DTT",),col=1, row=2)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=[t / 100 for t in istmd_dtt], name="ISTMD",line=dict(color=color[2], width=4,),showlegend=False),col=2, row=1)
 
-st.plotly_chart(fig_learn_speed, use_container_width=True)
+st.plotly_chart(fig_learn_speed, use_container_width=False)

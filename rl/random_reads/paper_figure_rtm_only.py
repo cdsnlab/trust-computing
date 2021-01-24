@@ -18,8 +18,8 @@ def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
 
-    rtmdcoll = db['rtm_d']
-    rtmcoll = db['rtm']
+    rtmdcoll = db['rtm_d95_r']
+    rtmcoll = db['rtm95_r']
 
     return rtmdcoll, rtmcoll
 
