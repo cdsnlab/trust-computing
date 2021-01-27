@@ -20,19 +20,19 @@ def connect():
     db = client['trustdb']
 
     # cares_rl_sb = db['cares_rl_sbe']
-    cares_rl_sb = db['cares_rl_sb_de001halfsteps']
-    cares_rl_bl = db['cares_rl_bl_de001halfsteps']
-    cares_rl_sb_custom=db['cares_rl_sb_custom_de001halfsteps']
-    cares_rl_bl_custom=db['cares_rl_bl_custom_de001halfsteps']
+    cares_rl_sb = db['cares_rl_sb_pnt']
+    cares_rl_bl = db['cares_rl_bl_pnt']
+    cares_rl_sb_custom=db['cares_rl_sb_pnt']
+    cares_rl_bl_custom=db['cares_rl_bl_pnt']
     return cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom
 
 def named_product(**items):
     Product = namedtuple('Product', items.keys())
     return starmap(Product, product(*items.values()))
 
-def reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap): #* returns a string line 
+def reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap, ppvnpv): 
     allcombinations=[]
-    for output in named_product(v_d=d,v_lr=lr, v_df=df, v_eps=eps, v_fd=fd, v_s=s, v_i=i, v_mvp=mvp, v_mbp=mbp, v_oap=oap):
+    for output in named_product(v_d=d, v_lr=lr, v_df=df, v_eps=eps, v_fd=fd, v_s=s, v_i=i, v_mvp=mvp, v_mbp=mbp, v_oap=oap, v_ppvnpvthr=ppvnpv):
         allcombinations.append(str(output))
     return allcombinations
 
@@ -55,9 +55,10 @@ eps=[0.5]
 fd=[1]
 s=[12000]
 i=[10,50,90]
-mvp=[0.2]
+mvp=[0.3]
 mbp=[0.9]
-oap=[0.1]
+oap=[0.3]
+ppvnpv=[0.9]
 
 ######################################## SB
 #########################################
@@ -77,7 +78,7 @@ sb_results_acc.update_yaxes(
     # title_text="Detection Accuracy (%)",
     gridcolor="gray", 
     gridwidth=1, 
-    range=[85, 100], 
+    range=[0, 100], 
     mirror=True,  
     linecolor='black', 
     title_standoff=1,
@@ -99,11 +100,11 @@ sb_results_acc.update_xaxes(
     )
 sb_results_acc.update_layout(
     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
-        l=5,
-        r=5,
-        b=5,
-        t=5,
-        pad=5
+        l=1,
+        r=1,
+        b=1,
+        t=1,
+        pad=1
     ),
     font=dict(
         size=24,
@@ -144,12 +145,13 @@ sb_results_dtt.update_xaxes(
 
     )
 sb_results_dtt.update_layout(
-    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=470, width=600, margin=dict(
-        l=5,
-        r=5,
-        b=5,
-        t=5,
-        pad=5
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=510, width=640, 
+    margin=dict(
+        l=1,
+        r=1,
+        b=1,
+        t=1,
+        pad=1
     ),
     font=dict(
         size=24,
@@ -164,7 +166,7 @@ sb_results_dtt.update_layout(
         bordercolor="Black",
         borderwidth=2,
         font=dict(
-            size=24,
+            size=29,
         )
     ),
     
@@ -206,28 +208,28 @@ sb_results_rew.update_xaxes(
     )
 sb_results_rew.update_layout(
     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
-        l=5,
-        r=5,
-        b=5,
-        t=5,
-        pad=5
+        l=1,
+        r=1,
+        b=1,
+        t=1,
+        pad=1
     ),
     font=dict(
         size=24,
     ), 
-    legend=dict(
-        orientation='h',
-        yanchor="bottom",
-        y=1.1,
-        xanchor="right",
-        x=0.65,
-        bgcolor="rgba(0,0,0,0)",
-        bordercolor="Black",
-        borderwidth=2,
-        font=dict(
-            size=24,
-        )
-    ),
+    # legend=dict(
+    #     orientation='h',
+    #     yanchor="bottom",
+    #     y=1.1,
+    #     xanchor="right",
+    #     x=0.65,
+    #     bgcolor="rgba(0,0,0,0)",
+    #     bordercolor="Black",
+    #     borderwidth=2,
+    #     font=dict(
+    #         size=24,
+    #     )
+    # ),
     
 )
 
@@ -235,7 +237,7 @@ sb_results_rew.update_layout(
 symbols = ['circle','diamond','cross']
 linetype = ['dot', 'dash', 'solid']
 color = ['red', 'blue', 'green']
-allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
+allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap, ppvnpv)
 
 for idx, k in enumerate(allcombination):
     print(k)
@@ -246,8 +248,8 @@ for idx, k in enumerate(allcombination):
 
     myquery = {"id": str(k)}
     
-    mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlsbaccuracy = mydocrlsb[0]['accuracy']
+    mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    rlsbaccuracy = mydocrlsb[0]['step_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -255,14 +257,14 @@ for idx, k in enumerate(allcombination):
     rlsbf1 = mydocrlsb[0]['f1score']
     rlsberror = mydocrlsb[0]['error']
 
-    mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['accuracy']
-    rlblprecision = mydocrlbl[0]['precision']
-    rlblrecall = mydocrlbl[0]['recall']
-    rlblrew = mydocrlbl[0]['cum_rew']
-    rlbldtt = mydocrlbl[0]['avg_dtt']
-    rlblf1 = mydocrlbl[0]['f1score']
-    rlblerror = mydocrlbl[0]['error']
+    # mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    # rlblaccuracy = mydocrlbl[0]['cum_accuracy']
+    # rlblprecision = mydocrlbl[0]['precision']
+    # rlblrecall = mydocrlbl[0]['recall']
+    # rlblrew = mydocrlbl[0]['cum_rew']
+    # rlbldtt = mydocrlbl[0]['avg_dtt']
+    # rlblf1 = mydocrlbl[0]['f1score']
+    # rlblerror = mydocrlbl[0]['error']
     
     sb_results_acc.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=False))
     # fig_da_init.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="SB-Initial DTT {}".format(i[idx])))
@@ -281,7 +283,7 @@ for idx, k in enumerate(allcombination):
 #*custom version (RLBL-delta:1, )
 d=[1]
 
-allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
+allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap, ppvnpv)
 
 for idx, k in enumerate(allcombination):
     print(k)
@@ -291,9 +293,9 @@ for idx, k in enumerate(allcombination):
     x = np.arange(int(xvalue)/100)
     myquery = {"id": str(k)}
     
-    mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
     # print(mydocrlsb)
-    rlsbaccuracy = mydocrlsb[0]['accuracy']
+    rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -301,8 +303,8 @@ for idx, k in enumerate(allcombination):
     rlsbf1 = mydocrlsb[0]['f1score']
     rlsberror = mydocrlsb[0]['error']
 
-    mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['accuracy']
+    mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
@@ -324,8 +326,6 @@ for idx, k in enumerate(allcombination):
     # fig_rew_init.add_trace(go.Scatter(x=x, y=rlblrew, line=dict(width=2, color='yellow',dash=linetype[idx]), name="BL-variable {}".format(i[idx]))) 
 
 
-
-
 d=[5]
 
 ######################################## BL
@@ -345,7 +345,7 @@ bl_results_acc.update_yaxes(
     # title_text="Detection Accuracy (%)",
     gridcolor="gray", 
     gridwidth=1, 
-    range=[85, 100], 
+    range=[0, 100], 
     mirror=True,  
     linecolor='black', 
     title_standoff=1,
@@ -367,11 +367,11 @@ bl_results_acc.update_xaxes(
     )
 bl_results_acc.update_layout(
     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
-        l=5,
-        r=5,
-        b=5,
-        t=5,
-        pad=5
+        l=1,
+        r=1,
+        b=1,
+        t=1,
+        pad=1
     ),
     font=dict(
         size=24,
@@ -412,12 +412,12 @@ bl_results_dtt.update_xaxes(
 
     )
 bl_results_dtt.update_layout(
-    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=470, width=600, margin=dict(
-        l=5,
-        r=5,
-        b=5,
-        t=5,
-        pad=5
+    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=510, width=640, margin=dict(
+        l=1,
+        r=1,
+        b=1,
+        t=1,
+        pad=1
     ),
     font=dict(
         size=24,
@@ -432,7 +432,7 @@ bl_results_dtt.update_layout(
         bordercolor="Black",
         borderwidth=2,
         font=dict(
-            size=24,
+            size=29,
         )
     ),
     
@@ -474,33 +474,33 @@ bl_results_rew.update_xaxes(
     )
 bl_results_rew.update_layout(
     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', autosize=False,height=400, width=600, margin=dict(
-        l=5,
-        r=5,
-        b=5,
-        t=5,
-        pad=5
+        l=1,
+        r=1,
+        b=1,
+        t=1,
+        pad=1
     ),
     font=dict(
         size=24,
     ), 
-    legend=dict(
-        orientation='h',
-        yanchor="bottom",
-        y=1.1,
-        xanchor="right",
-        x=0.65,
-        bgcolor="rgba(0,0,0,0)",
-        bordercolor="Black",
-        borderwidth=2,
-        font=dict(
-            size=24,
-        )
-    ),
+    # legend=dict(
+    #     orientation='h',
+    #     yanchor="bottom",
+    #     y=1.1,
+    #     xanchor="right",
+    #     x=0.65,
+    #     bgcolor="rgba(0,0,0,0)",
+    #     bordercolor="Black",
+    #     borderwidth=2,
+    #     font=dict(
+    #         size=24,
+    #     )
+    # ),
     
 )
 
 
-allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
+allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap, ppvnpv)
 
 for idx, k in enumerate(allcombination):
     print(k)
@@ -510,17 +510,17 @@ for idx, k in enumerate(allcombination):
     x = np.arange(int(xvalue)/100)
     myquery = {"id": str(k)}
     
-    mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlsbaccuracy = mydocrlsb[0]['accuracy']
-    rlsbprecision = mydocrlsb[0]['precision']
-    rlsbrecall = mydocrlsb[0]['recall']
-    rlsbrew = mydocrlsb[0]['cum_rew']
-    rlsbdtt = mydocrlsb[0]['avg_dtt']
-    rlsbf1 = mydocrlsb[0]['f1score']
-    rlsberror = mydocrlsb[0]['error']
+    # mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    # rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    # rlsbprecision = mydocrlsb[0]['precision']
+    # rlsbrecall = mydocrlsb[0]['recall']
+    # rlsbrew = mydocrlsb[0]['cum_rew']
+    # rlsbdtt = mydocrlsb[0]['avg_dtt']
+    # rlsbf1 = mydocrlsb[0]['f1score']
+    # rlsberror = mydocrlsb[0]['error']
 
-    mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['accuracy']
+    mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    rlblaccuracy = mydocrlbl[0]['step_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
@@ -541,7 +541,7 @@ for idx, k in enumerate(allcombination):
 #*custom version (RLBL-delta:1, )
 d=[1]
 
-allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap)
+allcombination = reconstruct(d, lr, df, eps, fd, s, i, mvp, mbp, oap, ppvnpv)
 
 for idx, k in enumerate(allcombination):
     print(k)
@@ -551,9 +551,9 @@ for idx, k in enumerate(allcombination):
     x = np.arange(int(xvalue)/100)
     myquery = {"id": str(k)}
     
-    mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
     # print(mydocrlsb)
-    rlsbaccuracy = mydocrlsb[0]['accuracy']
+    rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -561,8 +561,8 @@ for idx, k in enumerate(allcombination):
     rlsbf1 = mydocrlsb[0]['f1score']
     rlsberror = mydocrlsb[0]['error']
 
-    mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['accuracy']
+    mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
+    rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
