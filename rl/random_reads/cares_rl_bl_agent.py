@@ -18,11 +18,12 @@ def named_product(**items):
     return starmap(Product, product(*items.values()))
     
 class QLearningAgent():
-    def __init__ (self, actions, lr, df, eps):    
+    def __init__ (self, actions, output):    
         self.actions = actions
-        self.learning_rate = lr
-        self.discount_factor = df
-        self.epsilon = eps
+        self.learning_rate = output.v_lr
+        self.discount_factor = output.v_df
+        self.p_init=output.v_eps
+        self.epsilon = output.v_eps
         self.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0]) #* this depends on the number of actions the system can make.
         # self.q_table = defaultdict(lambda:[0, 0, 0])
     
@@ -34,12 +35,10 @@ class QLearningAgent():
         self.q_table[state][action] += self.learning_rate * (new_q - current_q)
         # print(self.q_table)
 
-    def decayed_eps(self, current_step, max_step):
-        p_init = self.epsilon
-        p_end = 0.05
-        r = max((max_step-current_step)/max_step, 0)
-        # print((p_init-p_end)*r + p_end)
-        self.epsilon=(p_init-p_end)*r + p_end
+    def decayed_eps(self, current_step, max_step): 
+        p_end = 0.01
+        r = max(((max_step/2)-current_step)/(max_step/2), 0)
+        self.epsilon=(self.p_init-p_end)*r + p_end
 
     def print_qtable(self): 
         print(self.q_table)
@@ -88,16 +87,13 @@ class QLearningAgent():
         return sample_index
         
 if __name__ == "__main__":
-    # for output in named_product(v_d=[5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10,50, 90], v_mvp=[0.3], v_mbp=[0.5], v_oap=[0.2]):
-    for output in named_product(v_d=[1, 5, 9], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[59999], v_i=[10, 50, 90], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3]): 
+    for output in named_product(v_d=[1,5,9], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[12000], v_i=[10, 50, 90], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.3, 0.5, 0.7, 0.9], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_ppvnpvthr= [0.1, 0.5, 0.9]): 
+    # for output in named_product(v_d=[5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[12000], v_i=[10], v_mvp=[0.3], v_mbp=[0.9], v_oap=[0.3], v_ppvnpvthr= [0.1, 0.5, 0.9]):  
 
-    # for output in named_product(v_d=[3], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.2, 0.3, 0.4, 0.5], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_interval=[100]):
-    # for output in named_product(v_d=[1], v_bd=[0.5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[11000], v_i=[50], v_mvp=[0.2], v_mbp=[0.5], v_oap=[0.2, 0.4], v_interval=[100]):
-        # print(output.v_i/100)
-        # time.sleep(1)
         filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
-        env = trustEnv(output.v_i, output.v_d, 1, output.v_i, filename)
-        agent = QLearningAgent(list(range(env.n_actions)), output.v_lr, output.v_df, output.v_eps)
+        # env = trustEnv(output.v_i, output.v_d, 1, output.v_i, filename)
+        env = trustEnv(output,1, filename)
+        agent = QLearningAgent(list(range(env.n_actions)), output)
         
         DELAY = output.v_fd
         STEPS = output.v_s
@@ -116,7 +112,7 @@ if __name__ == "__main__":
                 
                 env.evaluate(interaction_number, samplelist)
                 
-                agent.decayed_eps(interaction_number, STEPS)
+                agent.decayed_eps(interaction_number, STEPS/100)
 
                 action = agent.get_action(state, list(env.action_space))
                 reward, next_state = env.step(action)
@@ -126,15 +122,16 @@ if __name__ == "__main__":
 
 
                 # this is the end of one simulation
-                if interaction_number == (STEPS+1)/100:
+                if interaction_number == (STEPS)/100:
                     print("run count: {} finished ".format(i))
                     print("dtt {}".format(env.dtt))
                     print("beta {}".format(env.beta))
-                    print("Accuracy: {}".format(env.accuracy[i][-1]))
+                    print("Accuracy: {}".format(env.cum_accuracy[i][-1]))
                     print("prec: {}".format(env.precision[i][-1]))
                     print("Rec: {}".format(env.recall[i][-1]))
                     env.reset()
                     agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
+                    agent.epsilon=output.v_eps
                     # print("[INFO] Finished {}th ".format(i))
                     break
                 interaction_number+=1
@@ -142,4 +139,3 @@ if __name__ == "__main__":
         print("{} finished ".format(output))
         
         env.save_avg_accuracy(run_counts, output)
-

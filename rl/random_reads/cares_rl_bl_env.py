@@ -17,41 +17,42 @@ class trustEnv:
         the goal of this program is train our system to set dynamic trust threshold 
         
     """
-    def __init__(self, thrvalue, deltavalue, rewvalue, beta, filename):
+    def __init__(self, output, rewvalue, filename):
         super(trustEnv, self).__init__()
-        self.originals = [thrvalue, deltavalue, rewvalue]
+        self.originals = [output.v_i, output.v_d, rewvalue]
         #* creates 3 actions: increase t_threshold OR decrease t_threshold
         #* general parameters
         print("[INFO] Reading file...")
         self.data = pd.read_csv('../../sampledata/'+filename, header=0)
         print("[INFO] File loaded")
         self.action_space = None
-        self.create_action_space( [-1, 0, 1], [-1, 0, 1], deltavalue) #* beta_d, dtt_d
+        self.create_action_space( [-1, 0, 1], [-1, 0, 1], output.v_d) #* beta_d, dtt_d
         print(self.action_space)
-        # self.action_space = ["uu", "ud", "us", "du", "dd", "ds", "su", "sd", "ss"] #* {state, beta} x {up, down, stay}
         self.n_actions = len(self.action_space)
-        self.delta = deltavalue
-        self.dtt = thrvalue
-        self.beta = beta #* added beta!
+
+        self.delta = output.v_d
+        self.dtt = output.v_i
+        self.beta = output.v_i #* added beta!
         self.state = None
         self.reward_value = rewvalue
+        self.PPV_THR = output.v_ppvnpvthr
+        self.NPV_THR = output.v_ppvnpvthr
 
         #* epoch parameters
         self.betarecord = defaultdict(list)
         self.average_reward = defaultdict(list)
         self.average_dtt= defaultdict(list)
-        self.accuracy = defaultdict(list)
+        self.step_accuracy=defaultdict(list)
+        self.cum_accuracy = defaultdict(list)
         self.precision = defaultdict(list)
         self.recall = defaultdict(list)
         self.f1score = defaultdict(list)
         self.result_values = defaultdict(lambda: [0, 0, 0, 0, 0, 0,0]) #* actual trust value, dtt, precision, accuracy, recall, f1
         self.cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
         self.tempcases = defaultdict(lambda:[0,0,0,0]) #* temporary cases for 100 vehicles. 
-        self.ttempcases = defaultdict(lambda:[0,0,0,0]) #* temporary cases for 100 vehicles. 
         
         #* step parameters
         self.cur_decision ={}
-        self.next_car_index = 1
         self.step_reward = 0
         self.step_dtt=0
 
@@ -67,7 +68,7 @@ class trustEnv:
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['cares_rl_bl95_r']
+        self.accrewcollection = self.db['cares_rl_bl_pnt']
 
     def make_decision(self, samplelist):
         # print(samplelist)
@@ -121,7 +122,6 @@ class trustEnv:
         #     pass
         # else:
         #     reward += self.reward_value *10
-        # print(self.next_car_index, self.tempcases['gt'], self.previousFN, self.previousFP, self.dtt, reward )
 
         # self.previousFP = self.tempcases['gt'][1]
         # self.previousFN = self.tempcases['gt'][2]        
@@ -140,7 +140,7 @@ class trustEnv:
         # self.tempcases = defaultdict(lambda:[0, 0, 0, 0]) #! tempcases를 초기화 해야됨.  
 
         ###* 방법5) -D PPV, NPV 계산 수식으로 
-        PPV_THR, NPV_THR = 0.95, 0.95
+        # PPV_THR, NPV_THR = 0.95, 0.95
         # PPV_THR, NPV_THR = 0.8, 0.8
         if (self.tempcases['gt'][0] + self.tempcases['gt'][1]) == 0:
             PPV = 0
@@ -151,11 +151,11 @@ class trustEnv:
         else:
             NPV = self.tempcases['gt'][3] / (self.tempcases['gt'][3] + self.tempcases['gt'][2])
 
-        if (PPV > PPV_THR and NPV > NPV_THR):
+        if (PPV > self.PPV_THR and NPV > self.NPV_THR):
             reward += self.reward_value*2
-        elif(NPV < NPV_THR):
+        elif(NPV < self.NPV_THR):
             reward -= self.reward_value
-        elif(PPV < PPV_THR):
+        elif(PPV < self.PPV_THR):
             reward -= self.reward_value
         # print(currentPPV, currentNPV)
         ###* 방법6) PPV, NPV 매커니즘 그대로 활용해볼 것. 1이되면 가장 accurate하게 걸러내는 것! 0.95이하로 되면 올리기.
@@ -180,8 +180,6 @@ class trustEnv:
         self.step_reward=reward
         self.step_dtt = self.dtt
         self.state = (self.beta, self.dtt)
-
-        self.tempcases = defaultdict(lambda:[0, 0, 0, 0]) #! tempcases를 초기화 해야됨.  
 
         return reward, self.state
 
@@ -226,49 +224,52 @@ class trustEnv:
 
     def step_records(self, run_counts, step):
         self.precision[run_counts].append(self.result_values[step][2])
-        self.accuracy[run_counts].append(self.result_values[step][3]) 
+        self.cum_accuracy[run_counts].append(self.result_values[step][3]) 
         self.recall[run_counts].append(self.result_values[step][4])
         self.f1score[run_counts].append(self.result_values[step][5])
         self.betarecord[run_counts].append(self.result_values[step][6])
         self.average_dtt[run_counts].append(self.step_dtt) 
         self.average_reward[run_counts].append(self.step_reward ) 
-        # print(self.precision)
+        self.step_accuracy[run_counts].append((self.tempcases["gt"][0] + self.tempcases["gt"][3])/(self.tempcases["gt"][0] + self.tempcases["gt"][1] + self.tempcases["gt"][2] + self.tempcases["gt"][3]) *100) 
+        self.tempcases = defaultdict(lambda:[0, 0, 0, 0]) #! tempcases를 초기화 해야됨.  
+
     def save_avg_accuracy(self, run_counts, name): #! iterate and make average of the iterations.
         # print(len(self.accuracy[0]))
-        final_acc, final_dtt, final_gt, final_rew, final_precision, final_recall, final_acc_error, final_f1, final_beta = [], [], [], [], [], [], [], [], []
+        final_cum_acc, final_dtt, final_gt, final_rew, final_precision, final_recall, final_acc_error, final_f1, final_avg_acc, final_beta= [], [], [], [], [], [], [], [], [], []
         # print(len(self.accuracy[0]))
         # print(self.accuracy[:][-1])
-        for j in range(len(self.accuracy[0])):
-            temp ={0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0} #acc, dtt, gt, rew
+        for j in range(len(self.cum_accuracy[0])):
+            temp ={0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0} #acc, dtt, gt, rew
             errors=[]
             for i in range(run_counts):
                 # print("i {} j {}".format(i,j))
-                temp[0]+=self.accuracy[i][j]  
+                temp[0]+=self.cum_accuracy[i][j]  
                 temp[1]+=self.average_dtt[i][j] 
                 temp[3]+=self.average_reward[i][j]
                 temp[4]+=self.precision[i][j] 
                 temp[5]+=self.recall[i][j] 
                 temp[6]+=self.f1score[i][j]
                 temp[7]+=self.betarecord[i][j]
+                temp[8]+=self.step_accuracy[i][j]
+                errors.append(self.cum_accuracy[i][j])  
 
-                errors.append(self.accuracy[i][j])
-            # print(errors)
             final_acc_error.append(statistics.stdev(errors))
-            # print(temp)
-            final_acc.append(temp[0]/run_counts)
+
+            final_cum_acc.append(temp[0]/run_counts)
             final_dtt.append(temp[1]/run_counts)
             final_rew.append(temp[3]/run_counts)
             final_precision.append(temp[4]/run_counts)
             final_recall.append(temp[5]/run_counts)
             final_f1.append(temp[6]/run_counts)
             final_beta.append(temp[7]/ run_counts)
+            final_avg_acc.append(temp[8]/run_counts)
 
-        print("Accuracy: ", final_acc[-1])
+        print("Accuracy: ", final_cum_acc[-1])
         print("Precision: ", final_precision[-1])
         print("Recall: ", final_recall[-1])
         print("F1 score: ", final_f1[-1])
 
-        row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap,  "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "accuracy": final_acc, "avg_dtt": final_dtt, "cum_rew": final_rew, 'precision': final_precision, 'f1score': final_f1, 'recall': final_recall,"error":final_acc_error, 'beta_changes':final_beta}
+        row = {"id": str(name), 'v_mvp': name.v_mvp, 'v_mbp': name.v_mbp, 'v_oap': name.v_oap,  "v_d": name.v_d, "v_lr": name.v_lr, "v_df": name.v_df, "v_eps": name.v_eps, "v_fd": name.v_fd, "v_s": name.v_s, "v_i": name.v_i, "cum_accuracy": final_cum_acc, "step_accuracy": final_avg_acc, "avg_dtt": final_dtt, "cum_rew": final_rew, 'precision': final_precision, 'f1score': final_f1, 'recall': final_recall,"error":final_acc_error, 'beta_changes':final_beta, 'v_ppvnpvthr': name.v_ppvnpvthr}
         self.accrewcollection.insert_one(row)
 
     def reset(self): #* per iteration reset
@@ -277,7 +278,6 @@ class trustEnv:
         self.cur_decision ={}
         self.step_dtt = 0
         self.step_reward = 0
-        self.next_car_index = 1
         self.dtt = self.originals[0]
 
 
