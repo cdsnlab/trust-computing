@@ -15,6 +15,7 @@ from pymongo import MongoClient
 from collections import defaultdict
 
 
+
 import faulthandler
 faulthandler.enable()
 
@@ -60,6 +61,10 @@ def getxvalue(key): #parse for v_s
 
             return temp[1]
             
+
+markertypes=['circle', 'square', 'diamond'] # RTMD, DTMD, ISTMD
+colortypes=['green', 'orange', 'blue']
+
 data_load_state = st.text('Loading data...')
 cares_rl_sb, cares_rl_bl, rtmcoll, dtmcoll, istmcoll, rtmdcoll, dtmdcoll, istmdcoll = connect()
 data_load_state.text('Loading data...done!')
@@ -125,6 +130,19 @@ fig_acc_oap.update_layout(
     font=dict(
         size=18,
     ), 
+    legend=dict(
+        orientation='h',
+        yanchor="top",
+        y=1.5,
+        xanchor="center",
+        x=0.5,
+        bgcolor="rgba(255,255,255,255)",
+        bordercolor="Black",
+        borderwidth=2,
+        font=dict(
+            size=24,
+        )
+    ),
 )
 fig_acc_oap.layout.annotations[0].update(y=1.1, font=dict(size=20))
 fig_acc_oap.layout.annotations[1].update(y=1.1, font=dict(size=20))
@@ -174,9 +192,16 @@ for k in allcombination:
     rlbl['f1'].append(rlblf1[-1])
     
 
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=rlsb['acc'], name="CARES-S", mode='lines', line=dict(color='black', width=2, dash='solid')))
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=rlbl['acc'], name="CARES-B", mode='lines', line=dict(color='black', width=2, dash='dash')))
-
+fig_acc_oap.add_trace(
+    go.Scatter(x=oap, y=rlsb['acc'], name="CARES-S", mode='lines',
+    #marker=dict(color='red', size=20, symbol='x'), 
+    line=dict(color='red', width=4, dash='solid'), showlegend=True)
+)
+fig_acc_oap.add_trace(
+    go.Scatter(x=oap, y=rlbl['acc'], name="CARES-B", mode='lines',
+    #marker=dict(color='red', size=20, symbol='x'), 
+    line=dict(color='red', width=4, dash='dot'), showlegend=True)
+)
 #TODO missing precision, recall in the middle
 fig_acc_oap.add_trace(
     go.Scatter(x=oap, y=rlsb['pre'], name="RLSB-f1", mode='lines', line=dict(color='black', width=2, dash='solid'), showlegend=False),
@@ -224,27 +249,27 @@ for j in rwcombo:
     print(j)
     # xvalue = getxvalue(j)
     myquery = {'id': str(j)}
-    mydoc_rtm = list(rtmcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
-    mydoc_dtm = list(dtmcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
-    mydoc_istm = list(istmcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
+    # mydoc_rtm = list(rtmcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
+    # mydoc_dtm = list(dtmcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
+    # mydoc_istm = list(istmcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
     mydoc_rtmd = list(rtmdcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
     mydoc_dtmd = list(dtmdcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
     mydoc_istmd = list(istmdcoll.find(myquery, {"_id":0, "accuracy": 1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
 
-    rtm_accuracy = mydoc_rtm[0]['accuracy']
-    rtm_precision = mydoc_rtm[0]['precision']
-    rtm_recall = mydoc_rtm[0]['recall']   
-    rtm_f1score = mydoc_rtm[0]['f1score']
+    # rtm_accuracy = mydoc_rtm[0]['accuracy']
+    # rtm_precision = mydoc_rtm[0]['precision']
+    # rtm_recall = mydoc_rtm[0]['recall']   
+    # rtm_f1score = mydoc_rtm[0]['f1score']
 
-    dtm_accuracy = mydoc_dtm[0]['accuracy']
-    dtm_precision = mydoc_dtm[0]['precision']
-    dtm_recall = mydoc_dtm[0]['recall']   
-    dtm_f1score = mydoc_dtm[0]['f1score']
+    # dtm_accuracy = mydoc_dtm[0]['accuracy']
+    # dtm_precision = mydoc_dtm[0]['precision']
+    # dtm_recall = mydoc_dtm[0]['recall']   
+    # dtm_f1score = mydoc_dtm[0]['f1score']
 
-    istm_accuracy = mydoc_istm[0]['accuracy']
-    istm_precision = mydoc_istm[0]['precision']
-    istm_recall = mydoc_istm[0]['recall']
-    istm_f1score = mydoc_istm[0]['f1score']
+    # istm_accuracy = mydoc_istm[0]['accuracy']
+    # istm_precision = mydoc_istm[0]['precision']
+    # istm_recall = mydoc_istm[0]['recall']
+    # istm_f1score = mydoc_istm[0]['f1score']
 
     rtmd_accuracy = mydoc_rtmd[0]['accuracy']
     rtmd_precision = mydoc_rtmd[0]['precision']
@@ -261,30 +286,30 @@ for j in rwcombo:
     istmd_recall = mydoc_istmd[0]['recall']
     istmd_f1score = mydoc_istmd[0]['f1score']
 
-    rtm['acc'].append(rtm_accuracy[-1])
-    rtm['pre'].append(rtm_precision[-1])
-    rtm['rec'].append(rtm_recall[-1])
-    rtm['f1'].append(rtm_f1score[-1])
+    # rtm['acc'].append(rtm_accuracy[-1])
+    # rtm['pre'].append(rtm_precision[-1])
+    # rtm['rec'].append(rtm_recall[-1])
+    # rtm['f1'].append(rtm_f1score[-1])
 
     rtmd['acc'].append(rtmd_accuracy[-1])
     rtmd['pre'].append(rtmd_precision[-1])
     rtmd['rec'].append(rtmd_recall[-1])
     rtmd['f1'].append(rtmd_f1score[-1])
 
-    dtm['acc'].append(dtm_accuracy[-1])
-    dtm['pre'].append(dtm_precision[-1])
-    dtm['rec'].append(dtm_recall[-1])
-    dtm['f1'].append(dtm_f1score[-1])
+    # dtm['acc'].append(dtm_accuracy[-1])
+    # dtm['pre'].append(dtm_precision[-1])
+    # dtm['rec'].append(dtm_recall[-1])
+    # dtm['f1'].append(dtm_f1score[-1])
 
     dtmd['acc'].append(dtmd_accuracy[-1])
     dtmd['pre'].append(dtmd_precision[-1])
     dtmd['rec'].append(dtmd_recall[-1])
     dtmd['f1'].append(dtmd_f1score[-1])
 
-    istm['acc'].append(istm_accuracy[-1])
-    istm['pre'].append(istm_precision[-1])
-    istm['rec'].append(istm_recall[-1])
-    istm['f1'].append(istm_f1score[-1])
+    # istm['acc'].append(istm_accuracy[-1])
+    # istm['pre'].append(istm_precision[-1])
+    # istm['rec'].append(istm_recall[-1])
+    # istm['f1'].append(istm_f1score[-1])
 
     istmd['acc'].append(istmd_accuracy[-1])
     istmd['pre'].append(istmd_precision[-1])
@@ -292,32 +317,37 @@ for j in rwcombo:
     istmd['f1'].append(istmd_f1score[-1])
 
 
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['acc'], name="RTM", mode='lines', line=dict(color='green', width=2, dash="solid") ),col=1, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtmd['acc'], name="RTMD", mode='lines', line=dict(color='green', width=2, dash="dash")),col=1, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['acc'], name="DTM", mode='lines', line=dict(color='orange', width=2, dash="solid")),col=1, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtmd['acc'], name="DTMD", mode='lines', line=dict(color='orange', width=2, dash="dash")),col=1, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['acc'], name="ISTM", mode='lines', line=dict(color='blue', width=2, dash="solid")),col=1, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=istmd['acc'], name="ISTMD", mode='lines', line=dict(color='blue', width=2, dash="dash")),col=1, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['acc'], name="RTM", mode='lines', line=dict(color='green', width=2, dash="solid") ),col=1, row=1)
+fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtmd['acc'], name="RTMD", mode='lines',
+# marker=dict(color=colortypes[0], size=20, symbol=markertypes[0]), 
+line=dict(color=colortypes[0], width=4, dash="solid"), showlegend=True), col=1, row=1)# fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['acc'], name="DTM", mode='lines', line=dict(color='orange', width=2, dash="solid")),col=1, row=1)
+fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtmd['acc'], name="DTMD", mode='lines',
+# marker=dict(color=colortypes[1], size=20, symbol=markertypes[1]), 
+line=dict(color=colortypes[1], width=4, dash="solid"), showlegend=True), col=1, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['acc'], name="ISTM", mode='lines', line=dict(color='blue', width=2, dash="solid")),col=1, row=1)
+fig_acc_oap.add_trace(go.Scatter(x=oap, y=istmd['acc'], name="ISTMD", mode='lines',
+# marker=dict(color=colortypes[2], size=20, symbol=markertypes[2]), 
+line=dict(color=colortypes[2], width=4, dash="solid"), showlegend=True),col=1, row=1)
 
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['pre'], name="RTM-f1",mode='lines', line=dict(color='green', width=2, dash="solid"), showlegend=False) ,col=2, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['pre'], name="RTM-f1",mode='lines', line=dict(color='green', width=2, dash="solid"), showlegend=False) ,col=2, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtmd['pre'], name="RTMD-f1",mode='lines', line=dict(color='green', width=2, dash="dash"), showlegend=False),col=2, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['pre'], name="DTM-f1",mode='lines', line=dict(color='orange', width=2, dash="solid"), showlegend=False),col=2, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['pre'], name="DTM-f1",mode='lines', line=dict(color='orange', width=2, dash="solid"), showlegend=False),col=2, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtmd['pre'], name="DTMD-f1",mode='lines', line=dict(color='orange', width=2, dash="dash"), showlegend=False),col=2, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['pre'], name="ISTM-f1",mode='lines', line=dict(color='blue', width=2, dash="solid"), showlegend=False),col=2, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['pre'], name="ISTM-f1",mode='lines', line=dict(color='blue', width=2, dash="solid"), showlegend=False),col=2, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=istmd['pre'], name="ISTMD-f1",mode='lines', line=dict(color='blue', width=2, dash="dash"), showlegend=False),col=2, row=1)
 
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['rec'], name="RTM-f1",mode='lines', line=dict(color='green', width=2, dash="solid"), showlegend=False) ,col=3, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['rec'], name="RTM-f1",mode='lines', line=dict(color='green', width=2, dash="solid"), showlegend=False) ,col=3, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtmd['rec'], name="RTMD-f1",mode='lines', line=dict(color='green', width=2, dash="dash"), showlegend=False),col=3, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['rec'], name="DTM-f1",mode='lines', line=dict(color='orange', width=2, dash="solid"), showlegend=False),col=3, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['rec'], name="DTM-f1",mode='lines', line=dict(color='orange', width=2, dash="solid"), showlegend=False),col=3, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtmd['rec'], name="DTMD-f1",mode='lines', line=dict(color='orange', width=2, dash="dash"), showlegend=False),col=3, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['rec'], name="ISTM-f1",mode='lines', line=dict(color='blue', width=2, dash="solid"), showlegend=False),col=3, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['rec'], name="ISTM-f1",mode='lines', line=dict(color='blue', width=2, dash="solid"), showlegend=False),col=3, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=istmd['rec'], name="ISTMD-f1",mode='lines', line=dict(color='blue', width=2, dash="dash"), showlegend=False),col=3, row=1)
 
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['f1'], name="RTM-f1",mode='lines', line=dict(color='green', width=2, dash="solid"), showlegend=False) ,col=4, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtm['f1'], name="RTM-f1",mode='lines', line=dict(color='green', width=2, dash="solid"), showlegend=False) ,col=4, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=rtmd['f1'], name="RTMD-f1",mode='lines', line=dict(color='green', width=2, dash="dash"), showlegend=False),col=4, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['f1'], name="DTM-f1",mode='lines', line=dict(color='orange', width=2, dash="solid"), showlegend=False),col=4, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtm['f1'], name="DTM-f1",mode='lines', line=dict(color='orange', width=2, dash="solid"), showlegend=False),col=4, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=dtmd['f1'], name="DTMD-f1",mode='lines', line=dict(color='orange', width=2, dash="dash"), showlegend=False),col=4, row=1)
-fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['f1'], name="ISTM-f1",mode='lines', line=dict(color='blue', width=2, dash="solid"), showlegend=False),col=4, row=1)
+# fig_acc_oap.add_trace(go.Scatter(x=oap, y=istm['f1'], name="ISTM-f1",mode='lines', line=dict(color='blue', width=2, dash="solid"), showlegend=False),col=4, row=1)
 fig_acc_oap.add_trace(go.Scatter(x=oap, y=istmd['f1'], name="ISTMD-f1",mode='lines', line=dict(color='blue', width=2, dash="dash"), showlegend=False),col=4, row=1)
 
 st.title("Outside attack graph")

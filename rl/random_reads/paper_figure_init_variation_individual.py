@@ -20,10 +20,10 @@ def connect():
     db = client['trustdb']
 
     # cares_rl_sb = db['cares_rl_sbe']
-    cares_rl_sb = db['cares_rl_sb_pnt']
-    cares_rl_bl = db['cares_rl_bl_pnt']
-    cares_rl_sb_custom=db['cares_rl_sb_pnt']
-    cares_rl_bl_custom=db['cares_rl_bl_pnt']
+    cares_rl_sb = db['cares_rl_sb_newdeltas']
+    cares_rl_bl = db['cares_rl_bl_newdeltas']
+    cares_rl_sb_custom=db['cares_rl_sb_custom_newdeltas']
+    cares_rl_bl_custom=db['cares_rl_bl_custom_newdeltas']
     return cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom
 
 def named_product(**items):
@@ -48,17 +48,17 @@ cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom = connect()
 data_load_state.text('Loading data...done!')
 
 
-d=[5]
+d=[10]
 lr = [0.1]
 df=[0.1]
-eps=[0.5]
+eps=[0.1]
 fd=[1]
 s=[12000]
 i=[10,50,90]
 mvp=[0.3]
-mbp=[0.9]
+mbp=[1.0]
 oap=[0.3]
-ppvnpv=[0.9]
+ppvnpv=[0.5]
 
 ######################################## SB
 #########################################
@@ -249,7 +249,7 @@ for idx, k in enumerate(allcombination):
     myquery = {"id": str(k)}
     
     mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -265,13 +265,13 @@ for idx, k in enumerate(allcombination):
     # rlbldtt = mydocrlbl[0]['avg_dtt']
     # rlblf1 = mydocrlbl[0]['f1score']
     # rlblerror = mydocrlbl[0]['error']
-    
-    sb_results_acc.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=False))
+    # print('\u03B4')
+    sb_results_acc.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="\u03B4",showlegend=False))
     # fig_da_init.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="SB-Initial DTT {}".format(i[idx])))
     # fig_da_init.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=1), error_y = dict(type='data',array= rlsberror, visible=True), name="me"))
     # fig_da_init.add_trace(go.Scatter(x=x, y=rlblaccuracy, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-Initial DTT {}".format(i[idx])))
-
-    sb_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=True)) 
+    # P<sub>a</sub>
+    sb_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="\u03B8<sub>init</sub>: {}".format(i[idx]/100),showlegend=True)) 
     # fig_dtt_init.add_trace(go.Scatter(x=x, y=rlsbdtt, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="SB-Initial DTT {}".format(i[idx]))) 
     # fig_dtt_init.add_trace(go.Scatter(x=x, y=rlbldtt, name="BL"))
     # fig_dtt_init.add_trace(go.Scatter(x=x, y=rlbldtt, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-Initial DTT {}".format(i[idx]))) 
@@ -312,21 +312,21 @@ for idx, k in enumerate(allcombination):
     rlblf1 = mydocrlbl[0]['f1score']
     rlblerror = mydocrlbl[0]['error']
 
-    # sb_results.add_trace(go.Scatter(x=x, y=rlsbaccuracy,line=dict(width=4, color=color[idx],dash=linetype[idx]), name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=True), row=1, col=1)
+    # sb_results_acc.add_trace(go.Scatter(x=x, y=rlsbaccuracy,line=dict(width=4, color=color[idx],dash=linetype[idx]), name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=True))#, row=1, col=1)
     # fig_da_init.add_trace(go.Scatter(x=x, y=rlsbaccuracy,line=dict(width=2, color="yellow",dash=linetype[idx]), name="SB-variable {}".format(i[idx])))
     # # fig_da_init.add_trace(go.Scatter(x=x, y=rlsbaccuracy, line=dict(width=1), error_y = dict(type='data',array= rlsberror, visible=True), name="me"))
     # fig_da_init.add_trace(go.Scatter(x=x, y=rlblaccuracy,line=dict(width=2, color="yellow",dash=linetype[idx]), name="BL-variable {}".format(i[idx])))
 
-    # sb_results.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="init θ: {}".format(i[idx]),showlegend=True), row=1, col=2) 
+    # sb_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlsbdtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="init θ: {}".format(i[idx]),showlegend=True))#, row=1, col=2) 
     # fig_dtt_init.add_trace(go.Scatter(x=x, y=rlsbdtt, line=dict(width=2, color='yellow',dash=linetype[idx]), name="SB-variable {}".format(i[idx]))) 
     # fig_dtt_init.add_trace(go.Scatter(x=x, y=rlbldtt, line=dict(width=2, color='yellow',dash=linetype[idx]), name="BL-variable {}".format(i[idx]))) 
 
-    # sb_results.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="init θ: {}".format(i[idx]),showlegend=True), row=1, col=3) 
+    # sb_results_rew.add_trace(go.Scatter(x=x, y=rlsbrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"), name="init θ: {}".format(i[idx]),showlegend=True))#, row=1, col=3) 
     # fig_rew_init.add_trace(go.Scatter(x=x, y=rlsbrew, line=dict(width=2, color='yellow',dash=linetype[idx]), name="SB-variable {}".format(i[idx]))) 
     # fig_rew_init.add_trace(go.Scatter(x=x, y=rlblrew, line=dict(width=2, color='yellow',dash=linetype[idx]), name="BL-variable {}".format(i[idx]))) 
 
 
-d=[5]
+d=[10]
 
 ######################################## BL
 #########################################
@@ -511,7 +511,7 @@ for idx, k in enumerate(allcombination):
     myquery = {"id": str(k)}
     
     # mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    # rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    # rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     # rlsbprecision = mydocrlsb[0]['precision']
     # rlsbrecall = mydocrlsb[0]['recall']
     # rlsbrew = mydocrlsb[0]['cum_rew']
@@ -520,7 +520,7 @@ for idx, k in enumerate(allcombination):
     # rlsberror = mydocrlsb[0]['error']
 
     mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy": 1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['step_accuracy']
+    rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
@@ -531,7 +531,7 @@ for idx, k in enumerate(allcombination):
     bl_results_acc.add_trace(go.Scatter(x=x, y=rlblaccuracy, line=dict(width=4, color=color[idx],dash=linetype[idx]), name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=False))   
     # fig_da_init_bl.add_trace(go.Scatter(x=x, y=rlblaccuracy, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-Initial DTT {}".format(i[idx])))
 
-    bl_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlbldtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=True)) 
+    bl_results_dtt.add_trace(go.Scatter(x=x, y=[t / 100 for t in rlbldtt], line=dict(width=4, color=color[idx],dash=linetype[idx]), name="\u03B8<sub>init</sub>: {}".format(i[idx]/100),showlegend=True)) 
     # fig_dtt_init_bl.add_trace(go.Scatter(x=x, y=rlbldtt, line=dict(width=2, color=color[idx],dash=linetype[idx]), name="BL-Initial DTT {}".format(i[idx]))) 
 
     bl_results_rew.add_trace(go.Scatter(x=x, y=rlblrew, mode='markers', marker=dict(color=color[idx], size=10, symbol=symbols[idx], opacity=0.2, line=dict(color='black')),line=dict(width=4, color='black',dash="solid"),name="𝜃𝑖𝑛𝑖𝑡: {}".format(i[idx]/100),showlegend=False)) 

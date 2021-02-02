@@ -14,24 +14,24 @@ from collections import namedtuple
 from pymongo import MongoClient
 
 import faulthandler
-faulthandler.enable()
+
 
 def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
 
-    cares_rl_sb = db['cares_rl_sb_pnt']
-    cares_rl_bl = db['cares_rl_bl_pnt']
+    cares_rl_sb = db['cares_rl_sb_newdeltas']
+    cares_rl_bl = db['cares_rl_bl_newdeltas']
 
-    cares_rl_sb_custom=db['cares_rl_sb_custom_pnt']
-    cares_rl_bl_custom=db['cares_rl_bl_custom_pnt']
+    cares_rl_sb_custom=db['cares_rl_sb_custom_newdeltas']
+    cares_rl_bl_custom=db['cares_rl_bl_custom_newdeltas']
 
     rtmcoll = db['rtm_pnt']
     dtmcoll = db['dtm_pnt']
     istmcoll = db['istm_pnt']
-    rtmdcoll = db['rtm_d_pnt']
-    dtmdcoll = db['dtm_d_pnt']
-    istmdcoll = db['istm_d_pnt']
+    rtmdcoll = db['rtm_d_hotfix10020']
+    dtmdcoll = db['dtm_d_hotfix10020']
+    istmdcoll = db['istm_d_hotfix10020']
 
     return cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom, rtmcoll, dtmcoll, istmcoll, rtmdcoll, dtmdcoll, istmdcoll
 
@@ -56,24 +56,26 @@ def getxvalue(key): #parse for v_s
     for i in elements:
         if "v_s" in i:
             temp=i.split('=')
-
             return temp[1]
             
 data_load_state = st.text('Loading data...')
 cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom, rtmcoll, dtmcoll, istmcoll, rtmdcoll, dtmdcoll, istmdcoll = connect()
 data_load_state.text('Loading data...done!')
 
-d = [5]
+d = [10]
 lr=[0.1]
 df=[0.1]
-eps=[0.5]
+eps=[0.1]
 fd=[1]
 s=[12000]
 i=[10]
-mvp=[0.3]
+mvp=[0.4]
 mbp=[0.9]
-oap=[0.3]
-ppvnpv=[0.9]
+oap=[0.3] #add 0.1, 0.2 
+ppvnpv=[0.5]
+
+markertypes=['circle', 'square', 'diamond'] # RTMD, DTMD, ISTMD
+colortypes=['green', 'orange', 'blue']
 
 color = ['red', 'blue', 'green']
 
@@ -82,9 +84,6 @@ st.title("Detection Accuracy! ")
 fig_learn_speed = make_subplots(
     cols=1,
     rows=1,
-    # horizontal_spacing = 0.15,
-    # subplot_titles=("(a) Detection accuracy", " (b) Dynamic Trust Threshold ")
-    #specs=[[{"secondary_y": True}, {"secondary_y": True}]],
 )
 fig_learn_speed.update_yaxes(
     showgrid=True, 
@@ -106,7 +105,7 @@ fig_learn_speed.update_xaxes(
     linewidth=2, 
     showline=True,
     zeroline=False, 
-    title_text="Number of interactions",
+    title_text="Steps",
     gridcolor="gray", 
     gridwidth=1, 
     range=[0, 120], 
@@ -117,35 +116,35 @@ fig_learn_speed.update_xaxes(
     row=1,
     
 )
-# fig_learn_speed.update_yaxes(
-#     showgrid=True, 
-#     linewidth=2, 
-#     # title_text="DTT",
-#     gridcolor="gray", 
-#     gridwidth=1, 
-#     range=[0, 1], 
-#     mirror=True, 
-#     showline=True,
-#     zeroline=False, 
-#     linecolor='black', 
-#     title_standoff=1,
-#     col=2, 
-#     row=1,
-# )
-# fig_learn_speed.update_xaxes(
-#     showgrid=True, 
-#     linewidth=2, 
-#     showline=True,
-#     zeroline=False, 
-#     title_text="Steps",
-#     gridcolor="gray", 
-#     gridwidth=1, 
-#     range=[0, 120], 
-#     mirror=True, 
-#     linecolor='black', 
-#     col=2, 
-#     row=1,
-# )
+fig_learn_speed.update_yaxes(
+    showgrid=True, 
+    linewidth=2, 
+    # title_text="DTT",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 1], 
+    mirror=True, 
+    showline=True,
+    zeroline=False, 
+    linecolor='black', 
+    title_standoff=1,
+    col=2, 
+    row=1,
+)
+fig_learn_speed.update_xaxes(
+    showgrid=True, 
+    linewidth=2, 
+    showline=True,
+    zeroline=False, 
+    title_text="Steps",
+    gridcolor="gray", 
+    gridwidth=1, 
+    range=[0, 120], 
+    mirror=True, 
+    linecolor='black', 
+    col=2, 
+    row=1,
+)
 
 fig_learn_speed.update_layout(
     plot_bgcolor='rgba(0,0,0,0)', 
@@ -189,7 +188,7 @@ for k in allcombination:
     myquery = {"id": str(k)}
     
     mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "cum_accuracy":1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -198,7 +197,7 @@ for k in allcombination:
     rlsberror = mydocrlsb[0]['error']
 
     mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "cum_accuracy":1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['step_accuracy']
+    rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
@@ -210,12 +209,12 @@ for k in allcombination:
     #oap: 0.1, 0.15, 0.2, 0.25, 0.3
 
     fig_learn_speed.add_trace(
-        go.Scatter(x=x, y=rlsbaccuracy, name="CARES-S (5)", mode='lines', line=dict(color='black', width=4, dash='solid'), showlegend=False),
+        go.Scatter(x=x, y=rlsbprecision, name="CARES-S (5)", marker=dict(color='red', size=20, symbol='x'), line=dict(color='red', width=4, dash='solid'), showlegend=False),
         col=1,
         row=1,        
         )
     fig_learn_speed.add_trace(
-        go.Scatter(x=x, y=rlblaccuracy, name="CARES-B (5)", mode='lines', line=dict(color='black', width=4, dash='dot'), showlegend=False),
+        go.Scatter(x=x, y=rlblprecision, name="CARES-B (5)",marker=dict(color='red', size=20, symbol='x'), line=dict(color='red', width=4, dash='dash'), showlegend=False),
         col=1,
         row=1,
     )
@@ -243,7 +242,7 @@ for idx, k in enumerate(allcombination):
     
     mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "cum_accuracy":1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
     # print(mydocrlsb)
-    rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -252,7 +251,7 @@ for idx, k in enumerate(allcombination):
     rlsberror = mydocrlsb[0]['error']
 
     mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "cum_accuracy":1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['step_accuracy']
+    rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
@@ -260,12 +259,12 @@ for idx, k in enumerate(allcombination):
     rlblf1 = mydocrlbl[0]['f1score']
     rlblerror = mydocrlbl[0]['error']
     # fig_learn_speed.add_trace(
-    #     go.Scatter(x=x, y=rlsbaccuracy, name="CARES-S (v)", mode='lines', line=dict(color='black', width=4, dash='solid'), showlegend=False),
+    #     go.Scatter(x=x, y=rlsbaccuracy, name="CARES-S (5)", marker=dict(color='red', size=20, symbol='x'), line=dict(color='red', width=4, dash='solid'), showlegend=False),
     #     col=1,
     #     row=1,        
     #     )
     # fig_learn_speed.add_trace(
-    #     go.Scatter(x=x, y=rlblaccuracy, name="CARES-B (v)", mode='lines', line=dict(color='black', width=4, dash='dot'), showlegend=False),
+    #     go.Scatter(x=x, y=rlblaccuracy, marker=dict(color='red', size=20, symbol='x'), line=dict(color='red', width=4, dash='dash'), showlegend=False),
     #     col=1,
     #     row=1,
     # )
@@ -310,48 +309,48 @@ for idx, j in enumerate(rwcombo):
     mydoc_dtmd = list(dtmdcoll.find(myquery, {"_id":0, "cum_accuracy":1, "step_accuracy":1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
     mydoc_istmd = list(istmdcoll.find(myquery, {"_id":0, "cum_accuracy":1, "step_accuracy":1, 'precision':1, 'recall':1, 'f1score':1, 'dtt':1}))
 
-    rtm_accuracy = mydoc_rtm[0]['step_accuracy']
-    rtm_precision = mydoc_rtm[0]['precision']
-    rtm_recall = mydoc_rtm[0]['recall']   
-    rtm_f1score = mydoc_rtm[0]['f1score']
-    rtm_dtt = mydoc_rtm[0]['dtt']
+    # rtm_accuracy = mydoc_rtm[0]['cum_accuracy']
+    # rtm_precision = mydoc_rtm[0]['precision']
+    # rtm_recall = mydoc_rtm[0]['recall']   
+    # rtm_f1score = mydoc_rtm[0]['f1score']
+    # rtm_dtt = mydoc_rtm[0]['dtt']
 
-    dtm_accuracy = mydoc_dtm[0]['step_accuracy']
-    dtm_precision = mydoc_dtm[0]['precision']
-    dtm_recall = mydoc_dtm[0]['recall']   
-    dtm_f1score = mydoc_dtm[0]['f1score']
-    dtm_dtt = mydoc_dtm[0]['dtt']
+    # dtm_accuracy = mydoc_dtm[0]['cum_accuracy']
+    # dtm_precision = mydoc_dtm[0]['precision']
+    # dtm_recall = mydoc_dtm[0]['recall']   
+    # dtm_f1score = mydoc_dtm[0]['f1score']
+    # dtm_dtt = mydoc_dtm[0]['dtt']
 
-    istm_accuracy = mydoc_istm[0]['step_accuracy']
-    istm_precision = mydoc_istm[0]['precision']
-    istm_recall = mydoc_istm[0]['recall']
-    istm_f1score = mydoc_istm[0]['f1score']
-    istm_dtt = mydoc_istm[0]['dtt']
+    # istm_accuracy = mydoc_istm[0]['cum_accuracy']
+    # istm_precision = mydoc_istm[0]['precision']
+    # istm_recall = mydoc_istm[0]['recall']
+    # istm_f1score = mydoc_istm[0]['f1score']
+    # istm_dtt = mydoc_istm[0]['dtt']
 
-    rtmd_accuracy = mydoc_rtmd[0]['step_accuracy']
+    rtmd_accuracy = mydoc_rtmd[0]['cum_accuracy']
     rtmd_precision = mydoc_rtmd[0]['precision']
     rtmd_recall = mydoc_rtmd[0]['recall']
     rtmd_f1score = mydoc_rtmd[0]['f1score']
     rtmd_dtt = mydoc_rtmd[0]['dtt']
 
-    dtmd_accuracy = mydoc_dtmd[0]['step_accuracy']
+    dtmd_accuracy = mydoc_dtmd[0]['cum_accuracy']
     dtmd_precision = mydoc_dtmd[0]['precision']
     dtmd_recall = mydoc_dtmd[0]['recall']
     dtmd_f1score = mydoc_dtmd[0]['f1score']
     dtmd_dtt = mydoc_dtmd[0]['dtt']
 
-    istmd_accuracy = mydoc_istmd[0]['step_accuracy']
+    istmd_accuracy = mydoc_istmd[0]['cum_accuracy']
     istmd_precision = mydoc_istmd[0]['precision']
     istmd_recall = mydoc_istmd[0]['recall']
     istmd_f1score = mydoc_istmd[0]['f1score']
     istmd_dtt = mydoc_istmd[0]['dtt']
 
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=rtm_accuracy, name="RTM", ),col=1, row=1)
-    fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmd_accuracy, name="RTMD", line=dict(color=color[0], width=4, dash='solid'), showlegend=False ),col=1, row=1)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmd_precision, name="RTMD", marker=dict(color=colortypes[0], size=20, symbol=markertypes[0]), line=dict(color=colortypes[0], width=4, dash="solid"), showlegend=False ),col=1, row=1)
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=dtm_accuracy, name="DTM", ),col=1, row=1)
-    fig_learn_speed.add_trace(go.Scatter(x=x, y=dtmd_accuracy, name="DTMD", line=dict(color=color[1], width=4, dash='solid'), showlegend=False),col=1, row=1)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=dtmd_precision, name="DTMD", marker=dict(color=colortypes[1], size=20, symbol=markertypes[1]), line=dict(color=colortypes[1], width=4, dash="solid"), showlegend=False),col=1, row=1)
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=istm_accuracy, name="ISTM", ),col=1, row=1)
-    fig_learn_speed.add_trace(go.Scatter(x=x, y=istmd_accuracy, name="ISTMD", line=dict(color=color[2], width=4, dash='solid'), showlegend=False),col=1, row=1)
+    fig_learn_speed.add_trace(go.Scatter(x=x, y=istmd_precision, name="ISTMD", marker=dict(color=colortypes[2], size=20, symbol=markertypes[2]), line=dict(color=colortypes[2], width=4, dash="solid"), showlegend=False),col=1, row=1)
 
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=rtmf11, name="RTM-f1",marker=dict(size=12,symbol="circle")) ,col=1, row=2)
     # fig_learn_speed.add_trace(go.Scatter(x=x, y=[t / 100 for t in rtmd_dtt], name="RTMD", line=dict(color=color[0], width=4,),showlegend=False),col=2, row=1)

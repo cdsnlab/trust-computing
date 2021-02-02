@@ -21,10 +21,10 @@ def connect():
     db = client['trustdb']
 
     # cares_rl_sb = db['cares_rl_sbe']
-    cares_rl_sb = db['cares_rl_sb_pnt']
-    cares_rl_bl = db['cares_rl_bl_pnt']
-    cares_rl_sb_custom=db['cares_rl_sb_custom_pnt']
-    cares_rl_bl_custom=db['cares_rl_bl_custom_pnt']
+    cares_rl_sb = db['cares_rl_sb_newdeltas']
+    cares_rl_bl = db['cares_rl_bl_newdeltas']
+    cares_rl_sb_custom=db['cares_rl_sb_custom_newdeltas']
+    cares_rl_bl_custom=db['cares_rl_bl_custom_newdeltas']
     return cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom
 
 def named_product(**items):
@@ -48,16 +48,16 @@ data_load_state = st.text('Loading data...')
 cares_rl_sb, cares_rl_bl, cares_rl_sb_custom, cares_rl_bl_custom = connect()
 data_load_state.text('Loading data...done!')
 
-d=[1,5,9]
+d=[5, 10, 15]
 lr = [0.1]
 df=[0.1]
-eps=[0.5]
+eps=[0.1]
 # eps=[0.1]
 fd=[1]
 s=[12000]
 i=[10]
 mvp=[0.3]
-mbp=[0.9]
+mbp=[1.0]
 oap=[0.3]
 ppvnpv=[0.5]
 
@@ -246,7 +246,7 @@ for idx, k in enumerate(allcombination):
     myquery = {"id": str(k)}
     
     mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -255,7 +255,7 @@ for idx, k in enumerate(allcombination):
     rlsberror = mydocrlsb[0]['error']
 
     # mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    # rlblaccuracy = mydocrlbl[0]['step_accuracy']
+    # rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     # rlblprecision = mydocrlbl[0]['precision']
     # rlblrecall = mydocrlbl[0]['recall']
     # rlblrew = mydocrlbl[0]['cum_rew']
@@ -291,7 +291,7 @@ for idx, k in enumerate(allcombination):
     
     mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
     # print(mydocrlsb)
-    rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     rlsbprecision = mydocrlsb[0]['precision']
     rlsbrecall = mydocrlsb[0]['recall']
     rlsbrew = mydocrlsb[0]['cum_rew']
@@ -300,7 +300,7 @@ for idx, k in enumerate(allcombination):
     rlsberror = mydocrlsb[0]['error']
 
     # mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    # rlblaccuracy = mydocrlbl[0]['step_accuracy']
+    # rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     # rlblprecision = mydocrlbl[0]['precision']
     # rlblrecall = mydocrlbl[0]['recall']
     # rlblrew = mydocrlbl[0]['cum_rew']
@@ -328,17 +328,17 @@ for idx, k in enumerate(allcombination):
 #########################################
 #########################################
 
-d=[1,5,9]
-lr = [0.1]
-df=[0.1]
-eps=[0.5]
+d=[5,10,15]
+# lr = [0.1]
+# df=[0.1]
 # eps=[0.1]
-fd=[1]
-s=[12000]
-i=[10]
-mvp=[0.3]
-mbp=[0.9]
-oap=[0.3]
+# eps=[0.1]
+# fd=[1]
+# s=[12000]
+# i=[10]
+# mvp=[0.3]
+# mbp=[0.9]
+# oap=[0.3]
 
 #######
 bl_results_acc = make_subplots(
@@ -519,7 +519,7 @@ for idx, k in enumerate(allcombination):
     myquery = {"id": str(k)}
     
     # mydocrlsb=list(cares_rl_sb.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    # rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    # rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     # rlsbprecision = mydocrlsb[0]['precision']
     # rlsbrecall = mydocrlsb[0]['recall']
     # rlsbrew = mydocrlsb[0]['cum_rew']
@@ -528,7 +528,7 @@ for idx, k in enumerate(allcombination):
     # rlsberror = mydocrlsb[0]['error']
 
     mydocrlbl=list(cares_rl_bl.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['step_accuracy']
+    rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
@@ -557,7 +557,7 @@ for idx, k in enumerate(allcombination):
     
     # mydocrlsb=list(cares_rl_sb_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
     # # print(mydocrlsb)
-    # rlsbaccuracy = mydocrlsb[0]['step_accuracy']
+    # rlsbaccuracy = mydocrlsb[0]['cum_accuracy']
     # rlsbprecision = mydocrlsb[0]['precision']
     # rlsbrecall = mydocrlsb[0]['recall']
     # rlsbrew = mydocrlsb[0]['cum_rew']
@@ -566,7 +566,7 @@ for idx, k in enumerate(allcombination):
     # rlsberror = mydocrlsb[0]['error']
 
     mydocrlbl=list(cares_rl_bl_custom.find(myquery, {"_id":0, "cum_accuracy": 1, "step_accuracy":1, 'precision':1, 'recall':1, 'cum_rew':1, 'avg_dtt':1, 'f1score':1, 'error':1}))
-    rlblaccuracy = mydocrlbl[0]['step_accuracy']
+    rlblaccuracy = mydocrlbl[0]['cum_accuracy']
     rlblprecision = mydocrlbl[0]['precision']
     rlblrecall = mydocrlbl[0]['recall']
     rlblrew = mydocrlbl[0]['cum_rew']
