@@ -5,3 +5,4 @@
 
 sampledata/*
 datageneration/venv*
+slack_noti.py
