@@ -26,7 +26,7 @@ class trustEnv:
         self.data = pd.read_csv('../../sampledata/'+filename, header=0)
         print("[INFO] File loaded")
         self.action_space = None
-        self.create_action_space( [-9, -5, -1, 0, 1, 5, 9], [-9, -5, -1, 0, 1, 5, 9], output.v_d) #* beta_d, dtt_d
+        self.create_action_space( [-15, -10, -5, 0, 5, 10, 15], [-15, -10, -5, 0, 5, 10, 15], output.v_d) #* beta_d, dtt_d
         print(self.action_space)
         self.n_actions = len(self.action_space)
 
@@ -70,7 +70,7 @@ class trustEnv:
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['cares_rl_bl_custom_pnt']
+        self.accrewcollection = self.db['cares_rl_bl_custom_manual']
 
     def make_decision(self, samplelist):        
         for index, sid in enumerate (samplelist):
@@ -145,21 +145,34 @@ class trustEnv:
 
         ###* 방법6) PPV, NPV 매커니즘 그대로 활용해볼 것. 1이되면 가장 accurate하게 걸러내는 것! 0.95이하로 되면 올리기.
         # PPV_THR, NPV_THR = 0.95, 0.95
-        if (self.tempcases['gt'][0] + self.tempcases['gt'][1]) == 0:
-            PPV = 0
-        else:
-            PPV = self.tempcases['gt'][0] / (self.tempcases['gt'][0] + self.tempcases['gt'][1])
-        if (self.tempcases['gt'][3] + self.tempcases['gt'][2]) == 0:
-            NPV = 0
-        else:
-            NPV = self.tempcases['gt'][3] / (self.tempcases['gt'][3] + self.tempcases['gt'][2])
+        # if (self.tempcases['gt'][0] + self.tempcases['gt'][1]) == 0:
+        #     PPV = 0
+        # else:
+        #     PPV = self.tempcases['gt'][0] / (self.tempcases['gt'][0] + self.tempcases['gt'][1])
+        # if (self.tempcases['gt'][3] + self.tempcases['gt'][2]) == 0:
+        #     NPV = 0
+        # else:
+        #     NPV = self.tempcases['gt'][3] / (self.tempcases['gt'][3] + self.tempcases['gt'][2])
 
-        if (PPV > self.PPV_THR and NPV > self.NPV_THR):
-            reward += self.reward_value*2
-        elif(NPV < self.NPV_THR):
-            reward -= self.reward_value
-        elif(PPV < self.PPV_THR):
-            reward -= self.reward_value
+        # if (PPV > self.PPV_THR and NPV > self.NPV_THR):
+        #     reward += self.reward_value*2
+        # elif(NPV < self.NPV_THR):
+        #     reward -= self.reward_value
+        # elif(PPV < self.PPV_THR):
+        #     reward -= self.reward_value
+
+        ###* 방법7: FP/all, FN/all이면 reward아니면 ?
+        FPR = self.tempcases['gt'][1] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3])
+        FNR = self.tempcases['gt'][2] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3])
+        if FPR < 0.05:
+            reward +=self.reward_value
+        else :
+            reward -=self.reward_value
+        if FNR < 0.05:
+            reward +=self.reward_value
+        else :
+            reward -=self.reward_value
+        # print("FPR: {}, FNR: {}, Rew: {}, DTT: {}".format(FPR, FNR, reward, self.dtt))
 
         self.step_reward=reward
         self.step_dtt = self.dtt
@@ -206,7 +219,6 @@ class trustEnv:
             self.result_values[intnumb][5]= (2*self.result_values[intnumb][2]*self.result_values[intnumb][4]) / (self.result_values[intnumb][2] + self.result_values[intnumb][4])
         self.result_values[intnumb][6] = self.beta
         #* beta values
-        self.result_values[intnumb][6] = self.beta
         self.cur_decision ={}
 
     def step_records(self, run_counts, step):
@@ -221,6 +233,7 @@ class trustEnv:
         # print(self.step_accuracy)
         self.tempcases = defaultdict(lambda:[0, 0, 0, 0]) 
 
+        # print(self.average_reward)
 
     def save_avg_accuracy(self, run_counts, name): #! iterate and make average of the iterations.
         # print(len(self.cum_accuracy[0]))

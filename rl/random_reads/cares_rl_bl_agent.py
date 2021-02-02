@@ -7,6 +7,9 @@ import random
 import queue
 from itertools import product, starmap
 from collections import namedtuple
+import statistics
+from slack_noti import slacknoti
+
 #* for RL 
 from cares_rl_bl_env import trustEnv
 
@@ -36,8 +39,8 @@ class QLearningAgent():
         # print(self.q_table)
 
     def decayed_eps(self, current_step, max_step): 
-        p_end = 0.01
-        r = max(((max_step/2)-current_step)/(max_step/2), 0)
+        p_end = 0.05
+        r = max(((max_step)-current_step)/(max_step), 0)
         self.epsilon=(self.p_init-p_end)*r + p_end
 
     def print_qtable(self): 
@@ -87,8 +90,11 @@ class QLearningAgent():
         return sample_index
         
 if __name__ == "__main__":
-    for output in named_product(v_d=[1,5,9], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[12000], v_i=[10, 50, 90], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.3, 0.5, 0.7, 0.9], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_ppvnpvthr= [0.1, 0.5, 0.9]): 
-    # for output in named_product(v_d=[5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[12000], v_i=[10], v_mvp=[0.3], v_mbp=[0.9], v_oap=[0.3], v_ppvnpvthr= [0.1, 0.5, 0.9]):  
+    # for output in named_product(v_d=[5, 10, 15], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[12000], v_i=[10, 50, 90], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.3, 0.5, 0.7, 0.9], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_ppvnpvthr= [0.5]): 
+    for output in named_product(v_d=[10], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[12000], v_i=[10], v_mvp=[0.3], v_mbp=[0.9], v_oap=[0.1], v_ppvnpvthr= [0.5]): 
+    # for output in named_product(v_d=[5], v_lr=[0.1], v_df=[0.1], v_eps=[0.5], v_fd=[1], v_s=[12000], v_i=[10], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.3, 0.5, 0.7, 0.9], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_ppvnpvthr= [0.1, 0.5, 0.9]): 
+
+    # for output in named_product(v_d=[5], v_lr=[0.1], v_df=[0.1], v_eps=[0.1], v_fd=[1], v_s=[12000], v_i=[90], v_mvp=[0.3], v_mbp=[0.9], v_oap=[0.3], v_ppvnpvthr= [0.5]):  
 
         filename = "cares_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
         # env = trustEnv(output.v_i, output.v_d, 1, output.v_i, filename)
@@ -100,10 +106,14 @@ if __name__ == "__main__":
         evaluation_q = queue.Queue(DELAY)
 
         state = (env.beta, env.dtt)
-        run_counts = 20
+        run_counts = 100
+        starttime, endtime = [], []
+
 
         for i in range(run_counts): 
             interaction_number=1
+            starttime.append(time.time())
+
 
             while True:
                 samplelist = agent.get_sample(STEPS)
@@ -129,13 +139,25 @@ if __name__ == "__main__":
                     print("Accuracy: {}".format(env.cum_accuracy[i][-1]))
                     print("prec: {}".format(env.precision[i][-1]))
                     print("Rec: {}".format(env.recall[i][-1]))
+                    endtime.append(time.time())
+
                     env.reset()
                     agent.q_table = defaultdict(lambda:[0, 0, 0, 0, 0, 0, 0, 0, 0])
                     agent.epsilon=output.v_eps
                     # print("[INFO] Finished {}th ".format(i))
                     break
                 interaction_number+=1
+        
+        avgsimtime=0
+        errors=[]
+        for r in range(run_counts):
+            # print(r)
+            avgsimtime+=endtime[r]-starttime[r]
+            errors.append(endtime[r]-starttime[r])
+        print("avgsimtime: ",avgsimtime/run_counts)
+        print(statistics.stdev(errors))
 
         print("{} finished ".format(output))
         
         env.save_avg_accuracy(run_counts, output)
+slacknoti("CARES-S BL finished", 's')

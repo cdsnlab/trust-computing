@@ -68,7 +68,7 @@ class trustEnv:
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['cares_rl_bl_pnt']
+        self.accrewcollection = self.db['cares_rl_bl_manual']
 
     def make_decision(self, samplelist):
         # print(samplelist)
@@ -142,21 +142,21 @@ class trustEnv:
         ###* 방법5) -D PPV, NPV 계산 수식으로 
         # PPV_THR, NPV_THR = 0.95, 0.95
         # PPV_THR, NPV_THR = 0.8, 0.8
-        if (self.tempcases['gt'][0] + self.tempcases['gt'][1]) == 0:
-            PPV = 0
-        else:
-            PPV = self.tempcases['gt'][0] / (self.tempcases['gt'][0] + self.tempcases['gt'][1])
-        if (self.tempcases['gt'][3] + self.tempcases['gt'][2]) == 0:
-            NPV = 0
-        else:
-            NPV = self.tempcases['gt'][3] / (self.tempcases['gt'][3] + self.tempcases['gt'][2])
+        # if (self.tempcases['gt'][0] + self.tempcases['gt'][1]) == 0:
+        #     PPV = 0
+        # else:
+        #     PPV = self.tempcases['gt'][0] / (self.tempcases['gt'][0] + self.tempcases['gt'][1])
+        # if (self.tempcases['gt'][3] + self.tempcases['gt'][2]) == 0:
+        #     NPV = 0
+        # else:
+        #     NPV = self.tempcases['gt'][3] / (self.tempcases['gt'][3] + self.tempcases['gt'][2])
 
-        if (PPV > self.PPV_THR and NPV > self.NPV_THR):
-            reward += self.reward_value*2
-        elif(NPV < self.NPV_THR):
-            reward -= self.reward_value
-        elif(PPV < self.PPV_THR):
-            reward -= self.reward_value
+        # if (PPV > self.PPV_THR and NPV > self.NPV_THR):
+        #     reward += self.reward_value*2
+        # elif(NPV < self.NPV_THR):
+        #     reward -= self.reward_value
+        # elif(PPV < self.PPV_THR):
+        #     reward -= self.reward_value
         # print(currentPPV, currentNPV)
         ###* 방법6) PPV, NPV 매커니즘 그대로 활용해볼 것. 1이되면 가장 accurate하게 걸러내는 것! 0.95이하로 되면 올리기.
         # if (self.cases['gt'][0]+self.cases['gt'][1]) == 0:
@@ -177,6 +177,22 @@ class trustEnv:
         # else:
         #     reward += self.reward_value
 
+        
+        ###* 방법7: FP/all, FN/all이면 reward아니면 ?
+        FPR = self.tempcases['gt'][1] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3])
+        FNR = self.tempcases['gt'][2] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3])
+        if FPR < 0.05:
+            reward +=self.reward_value
+        else :
+            reward -=self.reward_value
+        if FNR < 0.05:
+            reward +=self.reward_value
+        else :
+            reward -=self.reward_value
+        # print("FPR: {}, FNR: {}, Rew: {}, DTT: {}".format(FPR, FNR, reward, self.dtt))
+
+        # if self.tempcases['gt'][1] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3]) >= 0.05 and self.tempcases['gt'][2] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3]) >= 0.05:
+        
         self.step_reward=reward
         self.step_dtt = self.dtt
         self.state = (self.beta, self.dtt)

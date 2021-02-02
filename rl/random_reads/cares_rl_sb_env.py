@@ -62,7 +62,7 @@ class trustEnv:
     def connect(self):
         self.client = MongoClient('localhost', 27017)
         self.db = self.client['trustdb']
-        self.accrewcollection = self.db['cares_rl_sb_pnt']
+        self.accrewcollection = self.db['cares_rl_sb_manual']
 
     def make_decision(self, samplelist):
         for index, sid in enumerate (samplelist):
@@ -176,21 +176,21 @@ class trustEnv:
         ###* 방법5) -D PPV, NPV 계산 수식으로 (괜찮은 방법)
         # PPV_THR, NPV_THR = 0.95, 0.95
         # PPV_THR, NPV_THR = 0.8, 0.8
-        if (self.tempcases['gt'][0] + self.tempcases['gt'][1]) == 0:
-            PPV = 0
-        else:
-            PPV = self.tempcases['gt'][0] / (self.tempcases['gt'][0] + self.tempcases['gt'][1])
-        if (self.tempcases['gt'][3] + self.tempcases['gt'][2]) == 0:
-            NPV = 0
-        else:
-            NPV = self.tempcases['gt'][3] / (self.tempcases['gt'][3] + self.tempcases['gt'][2])
+        # if (self.tempcases['gt'][0] + self.tempcases['gt'][1]) == 0:
+        #     PPV = 0
+        # else:
+        #     PPV = self.tempcases['gt'][0] / (self.tempcases['gt'][0] + self.tempcases['gt'][1])
+        # if (self.tempcases['gt'][3] + self.tempcases['gt'][2]) == 0:
+        #     NPV = 0
+        # else:
+        #     NPV = self.tempcases['gt'][3] / (self.tempcases['gt'][3] + self.tempcases['gt'][2])
 
-        if (PPV > self.PPV_THR and NPV > self.NPV_THR):
-            reward += self.reward_value*2
-        elif(NPV < self.NPV_THR):
-            reward -= self.reward_value
-        elif(PPV < self.PPV_THR):
-            reward -= self.reward_value
+        # if (PPV > self.PPV_THR and NPV > self.NPV_THR):
+        #     reward += self.reward_value*2
+        # elif(NPV < self.NPV_THR):
+        #     reward -= self.reward_value
+        # elif(PPV < self.PPV_THR):
+        #     reward -= self.reward_value
         
         
         ###* 방법6) 이전 PPV와 이전 NPV보다 높아지면 reward주고 아니면 감점? (생각보다 좋지는 않음)
@@ -215,6 +215,22 @@ class trustEnv:
         # self.prevNPV = NPV
         # self.prevPPV = PPV
 
+        ###* 방법7: FP/all, FN/all이면 reward아니면 ?
+        FPR = self.tempcases['gt'][1] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3])
+        FNR = self.tempcases['gt'][2] / (self.tempcases['gt'][0] + self.tempcases['gt'][1] + self.tempcases['gt'][2] + self.tempcases['gt'][3])
+        if FPR < 0.05:
+            reward +=self.reward_value
+        else :
+            reward -=self.reward_value
+        if FNR < 0.05:
+            reward +=self.reward_value
+        else :
+            reward -=self.reward_value
+
+        # print("FPR: {}, FNR: {}, Rew: {}, DTT: {}".format(FPR, FNR, reward, self.dtt))
+        # print("FNR:", FNR)
+        # print("rew:", reward)
+        
         self.step_reward=reward
         # print(self.step_dtt, self.dtt)
         self.step_dtt = self.dtt

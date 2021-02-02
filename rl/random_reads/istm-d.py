@@ -8,6 +8,7 @@ import statistics
 from collections import defaultdict
 from pymongo import MongoClient
 from itertools import product, starmap
+from slack_noti import slacknoti
 
 result_values = defaultdict(lambda:[0,0,0, 0]) #* precision, accuracy, recall, f1
 cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
@@ -26,7 +27,7 @@ def named_product(**items):
 def connect():
     client = MongoClient('localhost', 27017)
     db = client['trustdb']
-    accrewcollection = db['istm_d_pnt']
+    accrewcollection = db['istm_d_manual']
     return accrewcollection
 
 def evaluate(threshold, samplelist, data, intnumb, beta):
@@ -39,7 +40,8 @@ def evaluate(threshold, samplelist, data, intnumb, beta):
         tv_d = int(data['direct_tv'][i]*100)
         tv_id = int(data['indirect_tv'][i]*100)
         tv = (beta * tv_id + (1-beta) * tv_d)
-        if tv > threshold:
+        # print(tv, threshold)
+        if tv >= threshold:
             decision[i]=0
         else:
             decision[i]=1
@@ -91,7 +93,7 @@ def step_records(run_counts, intnumb, threshold):
 
 
 def get_sample(max_value):
-    sample_index = random.sample(range(max_value), 100)
+    sample_index = random.sample(range(max_value), 50)
     return sample_index
 
 def save_avg_accuracy(run_counts, name, steps):
@@ -116,6 +118,8 @@ def save_avg_accuracy(run_counts, name, steps):
         final_recall.append(temp[5]/run_counts)
         final_f1.append(temp[6]/run_counts)
         final_avg_acc.append(temp[8]/run_counts)
+    # print(final_cum_acc)
+
     print("Accuracy: ", final_cum_acc[-1])
     print("Precision: ", final_precision[-1])
     print("Recall: ", final_recall[-1])
@@ -124,8 +128,10 @@ def save_avg_accuracy(run_counts, name, steps):
     connection.insert_one(row)
 
 connection = connect()
-for output in named_product(v_i = [10, 50, 90], v_s = [12000], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.3, 0.5, 0.7, 0.9], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_ppvnpvthr=[0.1, 0.5, 0.9]): 
-# for output in named_product(v_i = [10], v_s = [12000], v_mvp=[0.1], v_mbp=[0.1], v_oap=[0.1], v_ppvnpvthr=[0.1, 0.5, 0.9]): 
+# for output in named_product(v_i = [10, 50, 90], v_s = [12000], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.5, 0.6, 0.7, 0.8, 0.9, 1.0], v_oap=[0.1, 0.2, 0.3], v_ppvnpvthr=[0.5]): 
+# for output in named_product(v_i = [10], v_s = [12000], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.1, 0.3, 0.5, 0.7, 0.9], v_oap=[0.1, 0.15, 0.2, 0.25, 0.3], v_ppvnpvthr=[0.1, 0.5, 0.9]): 
+for output in named_product(v_i = [10], v_s = [12000], v_mvp=[0.1, 0.2, 0.3, 0.4], v_mbp=[0.5, 0.6, 0.7, 0.8, 0.9, 1.0], v_oap=[0.1, 0.2, 0.3], v_ppvnpvthr=[0.5]): 
+# for output in named_product(v_i = [10], v_s = [12000], v_mvp=[0.3], v_mbp=[1.0], v_oap=[0.1], v_ppvnpvthr=[0.5]): 
     threshold=output.v_i
     STEPS = output.v_s
     PPV_THR = output.v_ppvnpvthr
@@ -136,9 +142,14 @@ for output in named_product(v_i = [10, 50, 90], v_s = [12000], v_mvp=[0.1, 0.2, 
     filename = "is_df_0_"+str(output.v_mbp)+"mbp"+str(output.v_oap)+"oap"+str(output.v_mvp)+"mvp.csv"
     data = pd.read_csv('../../sampledata/'+filename, header=0)
     BETA = 0.5
-    run_counts = 20
+    run_counts = 100
+    starttime, endtime = [], []
+
+
     for i in range (run_counts):
         interaction_number=1
+        starttime.append(time.time())
+
         while True:
             samplelist = get_sample(STEPS)
             evaluate(threshold, samplelist, data, interaction_number, BETA)
@@ -178,30 +189,66 @@ for output in named_product(v_i = [10, 50, 90], v_s = [12000], v_mvp=[0.1, 0.2, 
             #     hitmin=True
             #     hitmax=False
             #! JH's approach
-            if (PPV>PPV_THR and NPV>NPV_THR):
-                pass
-            elif (PPV>PPV_THR and NPV<NPV_THR):
-                # if threshold + 5 < 100:
-                #     threshold+=5
-                if threshold - 5 > 0:
-                    threshold-=5
-            elif (NPV>NPV_THR and PPV<PPV_THR):
-                # if threshold - 5 > 0:
-                #     threshold-=5
-                if threshold + 5 < 100:
-                    threshold+=5
-                
-            # print("#:{}, THR: {}, PPV: {}, NPV: {}, ACC: {}".format(interaction_number,  threshold, PPV, NPV, (cases["recent"][0] + cases["recent"][3])/(cases["recent"][0] + cases["recent"][1] + cases["recent"][2] + cases["recent"][3]) *100))#accuracy[i][-1]))
+            # if (PPV>PPV_THR and NPV>NPV_THR):
+            #     pass
+            # elif (PPV>PPV_THR and NPV<NPV_THR):
+            #     # if threshold + 5 < 100:
+            #     #     threshold+=5
+            #     if threshold - 5 > 0:
+            #         threshold-=5
+            # elif (NPV>NPV_THR and PPV<PPV_THR):
+            #     # if threshold - 5 > 0:
+            #     #     threshold-=5
+            #     if threshold + 5 < 100:
+            #         threshold+=5
+
+            # #! SK's approach
+            # if (PPV>PPV_THR and NPV>NPV_THR):
+            #     pass
+            # elif (NPV<NPV_THR):
+            #     if threshold - 5 > 0:
+            #         threshold-= 5
+            # elif (PPV<PPV_THR):
+            #     if threshold + 5 < 100:
+            #         threshold+=5
+
+            # print("#:{}, THR: {}, PPV: {}, NPV: {}, ACC: {}".format(interaction_number,  threshold, PPV, NPV, (cases["recent"][0] + cases["recent"][3])/(cases["recent"][0] + cases["recent"][1] + cases["recent"][2] + cases["recent"][3]) *100))#accuracy[i][-1]))                
+            #! JH's 2nd approach 
+            delta=1
+            if cases['recent'][1] / (cases['recent'][0] + cases['recent'][1] + cases['recent'][2] + cases['recent'][3]) > 0.05:
+                if threshold - delta >= 0:
+                    threshold -= delta
+            elif cases['recent'][2] / (cases['recent'][0] + cases['recent'][1] + cases['recent'][2] + cases['recent'][3]) > 0.05:
+                if threshold + delta <= 100:
+                    threshold += delta
+            # print("#: ", interaction_number)
+            # print("FP/all:", cases['recent'][1] / (cases['recent'][0] + cases['recent'][1] + cases['recent'][2] + cases['recent'][3]))
+            # print("FN/all:", cases['recent'][2] / (cases['recent'][0] + cases['recent'][1] + cases['recent'][2] + cases['recent'][3]))
+            # print("Thr:", threshold)
+            # print("Acc:", (cases["gt"][0] + cases["gt"][3])/(cases["gt"][0] + cases["gt"][1] + cases["gt"][2] + cases["gt"][3]) *100)
+            # print("Rec:", (cases["gt"][0])/(cases["gt"][0] + cases["gt"][2]) *100)
+
             if interaction_number == (STEPS)/100:
                 print("run count: {} finished ".format(i))
                 print("dtt {}".format(threshold))
                 print("Accuracy {}".format(cum_accuracy[i][-1]))
                 threshold=output.v_i
+                endtime.append(time.time())
+
 
                 break
             interaction_number+=1
         cases = defaultdict(lambda:[0, 0, 0, 0]) #* TP, FP, FN, TN
         result_values = defaultdict(lambda:[0,0,0,0]) #* precision, accuracy, recall
+    
+    avgsimtime=0
+    errors=[]
+    for r in range(run_counts):
+        # print(r)
+        avgsimtime+=endtime[r]-starttime[r]
+        errors.append(endtime[r]-starttime[r])
+    print("avgsimtime: ",avgsimtime/run_counts)
+    print(statistics.stdev(errors))
 
     save_avg_accuracy(run_counts, output, int((STEPS+1)/100))
     cum_accuracy = defaultdict(list)
@@ -210,3 +257,4 @@ for output in named_product(v_i = [10, 50, 90], v_s = [12000], v_mvp=[0.1, 0.2, 
     recall = defaultdict(list)
     f1score = defaultdict(list)
     average_dtt= defaultdict(list)
+slacknoti("ISTMD finished", 's')
